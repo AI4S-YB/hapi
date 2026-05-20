@@ -9,6 +9,7 @@
 
 import type { LocalResumeTarget, ResumableSession } from '@hapi/protocol'
 import type { AgentFlavor, CodexCollaborationMode, DecryptedMessage, PermissionMode, Session, SyncEvent } from '@hapi/protocol/types'
+import { unwrapRoleWrappedRecordEnvelope } from '@hapi/protocol/messages'
 import type { Server } from 'socket.io'
 import type { Store, CancelQueuedMessageResult } from '../store'
 import type { RpcRegistry } from '../socket/rpcRegistry'
@@ -60,6 +61,42 @@ export type LocalResumeTargetResult =
 export type LocalHandoffResult =
     | { type: 'success' }
     | { type: 'error'; message: string; code: 'session_not_found' | 'access_denied' | 'already_local' | 'handoff_failed' }
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null
+}
+
+function normalizeUserMessageText(value: string): string | undefined {
+    const text = value.trim().replace(/\s+/g, ' ')
+    return text.length > 0 ? text : undefined
+}
+
+function extractUserMessageText(content: unknown): string | undefined {
+    if (typeof content === 'string') {
+        return normalizeUserMessageText(content)
+    }
+
+    if (Array.isArray(content)) {
+        const parts = content
+            .map((block) => {
+                const record = asRecord(block)
+                return record?.type === 'text' && typeof record.text === 'string'
+                    ? record.text
+                    : null
+            })
+            .filter((text): text is string => text !== null)
+        return normalizeUserMessageText(parts.join(' '))
+    }
+
+    const record = asRecord(content)
+    if (record?.type === 'text' && typeof record.text === 'string') {
+        return normalizeUserMessageText(record.text)
+    }
+
+    return undefined
+}
 
 export class SyncEngine {
     private readonly eventPublisher: EventPublisher
@@ -521,11 +558,24 @@ export class SyncEngine {
                     collaborationMode: target.collaborationMode,
                     updatedAt: session?.updatedAt ?? 0,
                     name: session?.metadata?.name,
-                    summary: session?.metadata?.summary?.text
+                    summary: session?.metadata?.summary?.text,
+                    firstUserMessage: this.resolveFirstUserMessage(target.sessionId)
                 }
             })
             .filter((session) => !opts?.machineId || session.machineId === opts.machineId)
             .sort((a, b) => b.updatedAt - a.updatedAt)
+    }
+
+    private resolveFirstUserMessage(sessionId: string): string | undefined {
+        for (const message of this.store.messages.getFirstMessages(sessionId, 50)) {
+            const roleWrapped = unwrapRoleWrappedRecordEnvelope(message.content)
+            if (roleWrapped?.role !== 'user') continue
+
+            const text = extractUserMessageText(roleWrapped.content)
+            if (text) return text
+        }
+
+        return undefined
     }
 
     async resumeSession(sessionId: string, namespace: string, opts?: { permissionMode?: PermissionMode }): Promise<ResumeSessionResult> {
