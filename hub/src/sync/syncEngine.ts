@@ -26,7 +26,9 @@ import {
     type RpcGeneratedImageResponse,
     type RpcListDirectoryResponse,
     type RpcListCodexModelsResponse,
+    type RpcListCursorModelsResponse,
     type RpcListOpencodeModelsResponse,
+    type RpcCursorModel,
     type RpcOpencodeModel,
     type RpcPathExistsResponse,
     type RpcReadFileResponse,
@@ -44,7 +46,9 @@ export type {
     RpcGeneratedImageResponse,
     RpcListDirectoryResponse,
     RpcListCodexModelsResponse,
+    RpcListCursorModelsResponse,
     RpcListOpencodeModelsResponse,
+    RpcCursorModel,
     RpcOpencodeModel,
     RpcPathExistsResponse,
     RpcReadFileResponse,
@@ -904,6 +908,14 @@ export class SyncEngine {
 
     async listCodexModelsForMachine(machineId: string): Promise<RpcListCodexModelsResponse> {
         return await this.rpcGateway.listCodexModelsForMachine(machineId)
+    }
+
+    async listCursorModelsForSession(sessionId: string): Promise<RpcListCursorModelsResponse> {
+        return await this.rpcGateway.listCursorModelsForSession(sessionId)
+    }
+
+    async listCursorModelsForMachine(machineId: string): Promise<RpcListCursorModelsResponse> {
+        return await this.rpcGateway.listCursorModelsForMachine(machineId)
     }
 
     async listOpencodeModelsForSession(sessionId: string): Promise<RpcListOpencodeModelsResponse> {

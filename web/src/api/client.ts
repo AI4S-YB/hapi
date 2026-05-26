@@ -18,6 +18,7 @@ import type {
 } from '@/types/api'
 import type {
     CodexModelsResponse,
+    CursorModelsResponse,
     DeleteUploadResponse,
     FileReadResponse,
     GitCommandResponse,
@@ -491,6 +492,18 @@ export class ApiClient {
     async getSessionOpencodeModels(sessionId: string): Promise<OpencodeModelsResponse> {
         return await this.request<OpencodeModelsResponse>(
             `/api/sessions/${encodeURIComponent(sessionId)}/opencode-models`
+        )
+    }
+
+    async getSessionCursorModels(sessionId: string): Promise<CursorModelsResponse> {
+        return await this.request<CursorModelsResponse>(
+            `/api/sessions/${encodeURIComponent(sessionId)}/cursor-models`
+        )
+    }
+
+    async getMachineCursorModels(machineId: string): Promise<CursorModelsResponse> {
+        return await this.request<CursorModelsResponse>(
+            `/api/machines/${encodeURIComponent(machineId)}/cursor-models`
         )
     }
 
