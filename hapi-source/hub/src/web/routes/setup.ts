@@ -1,9 +1,12 @@
 import { Hono } from 'hono'
 import { spawnSync } from 'child_process'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { dirname } from 'node:path'
 
 const HOME = homedir()
+const CONFIG_DIR = `${HOME}/.hapi-shell`
+const CONFIG_PATH = `${CONFIG_DIR}/config.json`
 
 interface DetectedObsidian {
   found: boolean
@@ -181,6 +184,33 @@ export function createSetupRoutes(): Hono {
       skills: detectSkills()
     }
     return c.json(result)
+  })
+
+  // Save confirmed config
+  app.post('/api/setup/save', async (c) => {
+    try {
+      const body = await c.req.json()
+      if (!existsSync(CONFIG_DIR)) {
+        mkdirSync(CONFIG_DIR, { recursive: true })
+      }
+      writeFileSync(CONFIG_PATH, JSON.stringify(body, null, 2), 'utf8')
+      return c.json({ success: true, path: CONFIG_PATH })
+    } catch (err) {
+      return c.json({ success: false, error: err instanceof Error ? err.message : 'Save failed' }, 500)
+    }
+  })
+
+  // Read saved config
+  app.get('/api/config', async (c) => {
+    if (!existsSync(CONFIG_PATH)) {
+      return c.json({ configured: false })
+    }
+    try {
+      const data = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'))
+      return c.json({ configured: true, ...data })
+    } catch {
+      return c.json({ configured: false })
+    }
   })
 
   return app

@@ -43,6 +43,7 @@ import { clearCodexImportedSession, markCodexSessionsImported } from '@/lib/code
 import type { Machine, CodexDuplicateSessionGroup, CodexLocalSessionSummary } from '@/types/api'
 import { ContextPanel } from '@/components/ContextPanel'
 import { SearchModal } from '@/components/SearchModal'
+import { SetupWizard } from '@/components/SetupWizard'
 import FilesPage from '@/routes/sessions/files'
 import FilePage from '@/routes/sessions/file'
 import TerminalPage from '@/routes/sessions/terminal'
@@ -174,6 +175,19 @@ function SessionsPage() {
     const [isMergingDuplicateSessions, setIsMergingDuplicateSessions] = useState(false)
     const [isPanelOpen, setIsPanelOpen] = useState(false)
     const [isSearchOpen, setIsSearchOpen] = useState(false)
+    const [showSetup, setShowSetup] = useState(false)
+    const [setupChecked, setSetupChecked] = useState(false)
+
+    // Check if setup is needed on first load
+    useEffect(() => {
+        fetch('/api/config')
+            .then(r => r.json())
+            .then(d => {
+                if (!d.configured) setShowSetup(true)
+                setSetupChecked(true)
+            })
+            .catch(() => setSetupChecked(true))
+    }, [])
 
     const handleRefresh = useCallback(() => {
         void refetch()
@@ -476,6 +490,9 @@ function SessionsPage() {
 
     return (
         <>
+            {showSetup && setupChecked && (
+                <SetupWizard onComplete={() => setShowSetup(false)} />
+            )}
             <div className="flex h-full min-h-0">
             <div
                 className={`${isSessionsIndex ? 'flex' : 'hidden lg:flex'} w-full shrink-0 flex-col bg-[var(--app-bg)]`}
