@@ -190,18 +190,71 @@ function SkillsTab({ data }: { data: LiveData }) {
   )
 }
 
-// --- Cron Tab (still placeholder — needs scheduled_tasks.json reader) ---
+// --- Cron Tab (live from /api/cron) ---
 function CronTab() {
+  const [cronData, setCronData] = useState<{
+    tasks: Array<{ source: string; id: string; label: string; schedule: string; command: string; enabled: boolean }>;
+    sources: Record<string, { found: boolean; count?: number }>
+  } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/cron')
+      .then(r => r.json())
+      .then(d => setCronData(d))
+      .catch(() => setCronData(null))
+  }, [])
+
+  if (!cronData) {
+    return <div className="py-8 text-center text-xs text-[var(--app-hint)]">加载中...</div>
+  }
+
+  const { tasks, sources } = cronData
+
   return (
     <>
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold text-[var(--app-fg)]">定时任务</span>
+        <span className="text-xs font-semibold text-[var(--app-fg)]">
+          {`定时任务 (${tasks.length})`}
+        </span>
       </div>
 
-      <div className="py-8 text-center text-xs text-[var(--app-hint)]">
-        Cron 任务面板将在下一步实现。<br />
-        将读取 Claude Code 的 scheduled_tasks.json
+      {/* Source summary */}
+      <div className="mb-2 flex gap-1 text-[10px]">
+        <span className={`rounded px-1.5 py-0.5 ${sources.claudeCode?.found ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+          Claude Code
+        </span>
+        <span className={`rounded px-1.5 py-0.5 ${sources.launchd?.found ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+          {`launchd ${sources.launchd?.count || 0}`}
+        </span>
+        <span className={`rounded px-1.5 py-0.5 ${sources.crontab?.found ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+          {`cron ${sources.crontab?.count || 0}`}
+        </span>
       </div>
+
+      {tasks.length > 0 ? (
+        tasks.map(t => (
+          <div key={t.id}
+            className={`mb-1 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs
+              ${t.source === 'claude-code' ? 'border-l-[3px] border-l-[var(--app-link)]' : ''}
+              ${t.source === 'launchd' ? 'border-l-[3px] border-l-amber-500' : ''}
+              ${t.source === 'crontab' ? 'border-l-[3px] border-l-emerald-500' : ''}`}>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-[var(--app-fg)]">{t.label}</span>
+              <span className={`rounded px-1 py-0.5 text-[10px]
+                ${t.enabled ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+                {t.enabled ? '活跃' : '停用'}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">{t.schedule}</div>
+            <div className="mt-0.5 truncate text-[10px] text-[var(--app-hint)]">{t.command}</div>
+          </div>
+        ))
+      ) : (
+        <div className="py-4 text-center text-xs text-[var(--app-hint)]">
+          未检测到定时任务。<br />
+          Claude Code 的 CronCreate 创建持久任务后会自动出现在这里。
+        </div>
+      )}
     </>
   )
 }
