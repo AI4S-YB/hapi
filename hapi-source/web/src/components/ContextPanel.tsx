@@ -190,11 +190,19 @@ function SkillsTab({ data }: { data: LiveData }) {
   )
 }
 
-// --- Cron Tab (live from /api/cron) ---
+// --- Cron Tab (live from /api/cron, platform-aware) ---
+
+const SOURCE_LABELS: Record<string, string> = {
+  'claude-code': 'Claude Code',
+  'launchd': 'launchd',
+  'crontab': 'crontab'
+}
+
 function CronTab() {
   const [cronData, setCronData] = useState<{
+    platform: string;
     tasks: Array<{ source: string; id: string; label: string; schedule: string; command: string; enabled: boolean }>;
-    sources: Record<string, { found: boolean; count?: number }>
+    sources: Record<string, { found: boolean; count?: number; available: boolean }>
   } | null>(null)
 
   useEffect(() => {
@@ -208,7 +216,8 @@ function CronTab() {
     return <div className="py-8 text-center text-xs text-[var(--app-hint)]">加载中...</div>
   }
 
-  const { tasks, sources } = cronData
+  const { tasks, sources, platform } = cronData
+  const isMacOS = platform === 'darwin'
 
   return (
     <>
@@ -216,19 +225,16 @@ function CronTab() {
         <span className="text-xs font-semibold text-[var(--app-fg)]">
           {`定时任务 (${tasks.length})`}
         </span>
+        <span className="text-[9px] text-[var(--app-hint)]">
+          {isMacOS ? 'macOS' : 'Linux'}
+        </span>
       </div>
 
-      {/* Source summary */}
-      <div className="mb-2 flex gap-1 text-[10px]">
-        <span className={`rounded px-1.5 py-0.5 ${sources.claudeCode?.found ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
-          Claude Code
-        </span>
-        <span className={`rounded px-1.5 py-0.5 ${sources.launchd?.found ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
-          {`launchd ${sources.launchd?.count || 0}`}
-        </span>
-        <span className={`rounded px-1.5 py-0.5 ${sources.crontab?.found ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
-          {`cron ${sources.crontab?.count || 0}`}
-        </span>
+      {/* Source layer legend */}
+      <div className="mb-2 flex gap-1 text-[9px]">
+        <LayerBadge label="Claude Code" found={sources.claudeCode?.found} available={sources.claudeCode?.available} />
+        <LayerBadge label="launchd" found={sources.launchd?.found} available={sources.launchd?.available} />
+        <LayerBadge label="crontab" found={sources.crontab?.found} available={sources.crontab?.available} />
       </div>
 
       {tasks.length > 0 ? (
@@ -238,23 +244,47 @@ function CronTab() {
               ${t.source === 'claude-code' ? 'border-l-[3px] border-l-[var(--app-link)]' : ''}
               ${t.source === 'launchd' ? 'border-l-[3px] border-l-amber-500' : ''}
               ${t.source === 'crontab' ? 'border-l-[3px] border-l-emerald-500' : ''}`}>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-[var(--app-fg)]">{t.label}</span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="font-medium text-[var(--app-fg)] truncate">{t.label}</span>
+              <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium
+                ${t.source === 'claude-code' ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : ''}
+                ${t.source === 'launchd' ? 'bg-amber-500/10 text-amber-500' : ''}
+                ${t.source === 'crontab' ? 'bg-emerald-500/10 text-emerald-500' : ''}`}>
+                {SOURCE_LABELS[t.source] || t.source}
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-center gap-1">
+              <span className="text-[10px] text-[var(--app-hint)]">{t.schedule}</span>
               <span className={`rounded px-1 py-0.5 text-[10px]
                 ${t.enabled ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
                 {t.enabled ? '活跃' : '停用'}
               </span>
             </div>
-            <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">{t.schedule}</div>
             <div className="mt-0.5 truncate text-[10px] text-[var(--app-hint)]">{t.command}</div>
           </div>
         ))
       ) : (
         <div className="py-4 text-center text-xs text-[var(--app-hint)]">
-          未检测到定时任务。<br />
-          Claude Code 的 CronCreate 创建持久任务后会自动出现在这里。
+          未检测到用户定时任务。<br />
+          {isMacOS
+            ? '系统级 launchd 服务已自动过滤。'
+            : 'Claude Code 的 CronCreate 创建持久任务后会自动出现。'}
         </div>
       )}
     </>
+  )
+}
+
+function LayerBadge(props: { label: string; found?: boolean; available?: boolean }) {
+  return (
+    <span className={`rounded px-1 py-0.5
+      ${!props.available
+        ? 'bg-[var(--app-border)]/30 text-[var(--app-hint)]'
+        : props.found
+          ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]'
+          : 'bg-[var(--app-border)] text-[var(--app-hint)]'
+      }`}>
+      {!props.available ? `${props.label} (-)` : props.found ? props.label : `${props.label} (0)`}
+    </span>
   )
 }
