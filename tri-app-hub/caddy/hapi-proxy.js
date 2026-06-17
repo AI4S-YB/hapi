@@ -4,23 +4,64 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
+const OBSIDIAN_VAULT = process.env.HOME + '/Library/Mobile Documents/iCloud~md~obsidian/Documents/ObsidianVault';
 
 const HAPI_HOST = '127.0.0.1';
 const HAPI_PORT = 3006;
 const PROXY_PORT = 3000;
 const ASSETS_DIR = path.join(__dirname, '..', 'shared-nav');
-const NAV_INJECT = '<script src="/assets/nav.js"></script>' +
-  '<link rel="stylesheet" href="/assets/nav.css">';
+const ASSETS_INJECT =
+  '<script src="/assets/nav.js"></script>' +
+  '<link rel="stylesheet" href="/assets/nav.css">' +
+  '<script src="/assets/search.js"></script>' +
+  '<script src="/assets/context-panel.js"></script>' +
+  '<link rel="stylesheet" href="/assets/panel.css">';
+
+function handleSearch(q, res) {
+  const results = { obsidian: [], gitlab: [] };
+
+  if (q) {
+    try {
+      const grepOut = execSync(
+        'grep -rli ' + JSON.stringify(q) + ' "' + OBSIDIAN_VAULT + '" --include="*.md" 2>/dev/null | head -10',
+        { timeout: 5000, encoding: 'utf8' }
+      );
+      results.obsidian = grepOut.trim().split('\n').filter(Boolean).map(function (p) {
+        var rel = p.replace(OBSIDIAN_VAULT + '/', '');
+        return { path: rel, title: rel.replace('.md', '').split('/').pop() };
+      });
+    } catch (e) { /* no results or timeout */ }
+  }
+
+  if (q) {
+    try {
+      const glabOut = execSync('glab search issues "' + q + '" --search-scope=all --per-page=5 2>/dev/null', {
+        timeout: 8000, encoding: 'utf8'
+      });
+      results.gitlab = glabOut.trim().split('\n').filter(function (l) {
+        return l.match(/^\d+/);
+      }).map(function (l) {
+        var parts = l.split(/\s+/);
+        return { iid: parts[0], title: parts.slice(1).join(' ') };
+      });
+    } catch (e) { /* no results or glab not configured */ }
+  }
+
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify(results));
+}
 
 function serveAsset(req, res) {
   const fileName = req.url.split('/').pop();
-  if (fileName !== 'nav.js' && fileName !== 'nav.css') return false;
+  const ALLOWED = ['nav.js', 'nav.css', 'search.js', 'context-panel.js', 'panel.css'];
+  if (!ALLOWED.includes(fileName)) return false;
   const filePath = path.join(ASSETS_DIR, fileName);
   if (!fs.existsSync(filePath)) return false;
   const ext = path.extname(fileName);
-  const mime = ext === '.js' ? 'application/javascript' : 'text/css';
+  const mimeMap = { '.js': 'application/javascript', '.css': 'text/css' };
   const content = fs.readFileSync(filePath);
-  res.writeHead(200, { 'Content-Type': mime, 'Content-Length': content.length });
+  res.writeHead(200, { 'Content-Type': mimeMap[ext], 'Content-Length': content.length });
   res.end(content);
   return true;
 }
@@ -28,6 +69,14 @@ function serveAsset(req, res) {
 const server = http.createServer(function (clientReq, clientRes) {
   // Serve nav assets directly
   if (clientReq.url.startsWith('/assets/') && serveAsset(clientReq, clientRes)) return;
+
+  // Search API
+  if (clientReq.url.startsWith('/api/search') && clientReq.method === 'GET') {
+    const urlObj = new URL(clientReq.url, 'http://' + clientReq.headers.host);
+    const q = urlObj.searchParams.get('q') || '';
+    handleSearch(q, clientRes);
+    return;
+  }
 
   const options = {
     hostname: HAPI_HOST,
@@ -51,7 +100,7 @@ const server = http.createServer(function (clientReq, clientRes) {
       proxyRes.on('data', function (c) { body.push(c); });
       proxyRes.on('end', function () {
         body = Buffer.concat(body).toString();
-        body = body.replace('</head>', NAV_INJECT + '\n</head>');
+        body = body.replace('</head>', ASSETS_INJECT + '\n</head>');
         const headers = {};
         Object.keys(proxyRes.headers).forEach(function (k) {
           if (['content-length','content-security-policy','content-security-policy-report-only','transfer-encoding','content-encoding'].indexOf(k) === -1) {
