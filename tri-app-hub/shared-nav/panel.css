@@ -1,0 +1,238 @@
+/* === Search Modal === */
+#hapi-search-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2147483646;
+}
+.hapi-search-backdrop {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(2px);
+}
+.hapi-search-container {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 560px;
+  max-width: 90vw;
+  max-height: 70vh;
+  background: #1c1c1e;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.hapi-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #3a3a3c;
+}
+.hapi-search-icon { font-size: 16px; flex-shrink: 0; }
+.hapi-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.hapi-search-input::placeholder { color: #636366; }
+.hapi-search-hint {
+  font-size: 11px;
+  color: #636366;
+  background: #2c2c2e;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #3a3a3c;
+}
+.hapi-search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.hapi-search-loading, .hapi-search-empty, .hapi-search-error {
+  color: #8e8e93;
+  text-align: center;
+  padding: 24px;
+  font-size: 14px;
+}
+.hapi-search-section { margin-bottom: 12px; }
+.hapi-search-section-title {
+  color: #8e8e93;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 8px 6px;
+}
+.hapi-search-item { border-radius: 6px; margin-bottom: 2px; }
+.hapi-search-item a {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+}
+.hapi-search-item a:hover, .hapi-search-item.active a { background: #2c2c2e; }
+.hapi-search-item-title { font-size: 13px; font-weight: 500; }
+.hapi-search-item-path { font-size: 11px; color: #8e8e93; margin-top: 2px; }
+
+/* === Context Panel === */
+#hapi-context-panel {
+  position: fixed;
+  top: 36px;
+  right: 0;
+  width: 280px;
+  height: calc(100vh - 36px);
+  background: #1c1c1e;
+  border-left: 1px solid #3a3a3c;
+  z-index: 2147483645;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+}
+#hapi-context-panel.open { transform: translateX(0); }
+
+/* Panel toggle button */
+#hapi-panel-toggle {
+  position: fixed;
+  top: 40px;
+  right: 8px;
+  z-index: 2147483646;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #2c2c2e;
+  border: 1px solid #3a3a3c;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: right 0.2s ease;
+}
+#hapi-panel-toggle.panel-open { right: 288px; }
+
+/* Tabs */
+.hapi-panel-tabs {
+  display: flex;
+  border-bottom: 1px solid #3a3a3c;
+}
+.hapi-panel-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  font-size: 11px;
+  color: #8e8e93;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.hapi-panel-tab:hover { color: #ccc; background: rgba(255,255,255,0.03); }
+.hapi-panel-tab.active {
+  color: #a6e22e;
+  border-bottom-color: #a6e22e;
+}
+
+/* Tab content */
+.hapi-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+.hapi-panel-section { margin-bottom: 10px; }
+.hapi-panel-section-title {
+  color: #8e8e93;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.hapi-panel-card {
+  background: #2c2c2e;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.hapi-panel-card-title { color: #fff; font-weight: 500; }
+.hapi-panel-card-sub { color: #8e8e93; font-size: 10px; margin-top: 2px; }
+.hapi-panel-status {
+  display: inline-block;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-top: 3px;
+}
+.hapi-panel-status.active  { background: rgba(166,226,46,0.15); color: #a6e22e; }
+.hapi-panel-status.paused  { background: rgba(253,151,31,0.15); color: #fd971f; }
+.hapi-panel-status.onetime { background: rgba(142,142,147,0.15); color: #8e8e93; }
+
+/* Skill toggle */
+.hapi-skill-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2c2c2e;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 3px;
+}
+.hapi-skill-toggle {
+  width: 32px; height: 18px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+}
+.hapi-skill-toggle.on  { background: #a6e22e; }
+.hapi-skill-toggle.off { background: #48484a; }
+.hapi-skill-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.2s;
+}
+.hapi-skill-toggle.on::after  { left: 16px; }
+.hapi-skill-toggle.off::after { left: 2px; }
+
+/* Cron log */
+.hapi-cron-log {
+  font-size: 10px;
+  padding: 3px 0;
+  color: #ccc;
+  border-bottom: 1px solid #2c2c2e;
+}
+.hapi-cron-log.success { color: #a6e22e; }
+.hapi-cron-log.fail { color: #f92672; }
+
+/* Panel footer */
+.hapi-panel-footer {
+  padding: 8px 12px;
+  border-top: 1px solid #3a3a3c;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.hapi-panel-footer-tag {
+  font-size: 10px;
+  padding: 3px 6px;
+  background: #3a3a3c;
+  border-radius: 3px;
+  color: #ccc;
+  cursor: pointer;
+}
