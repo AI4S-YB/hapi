@@ -598,10 +598,7 @@ function SessionsPage() {
             </div>
 
             {/* Column 3: Context Panel (NEW) */}
-            <ContextPanel
-                isOpen={isPanelOpen}
-                onToggle={() => setIsPanelOpen(prev => !prev)}
-            />
+            <ContextPanel isOpen={isPanelOpen} />
 
             <SearchModal
                 isOpen={isSearchOpen}

@@ -1,229 +1,206 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type TabName = 'context' | 'skills' | 'cron'
 
-export function ContextPanel(props: {
+// Data shape from /api/setup/detect
+interface LiveData {
+  obsidian: { found: boolean; vaults: Array<{ name: string; path: string }> }
+  github: { found: boolean; user?: string; error?: string }
+  gitlab: { found: boolean; user?: string; error?: string }
+  machines: Array<{ host: string; hasKey: boolean; hasConfig: boolean }>
+  skills: Array<{ name: string }>
+}
+
+interface PanelProps {
   isOpen: boolean
-  onToggle: () => void
-}) {
+}
+
+export function ContextPanel(props: PanelProps) {
   const [activeTab, setActiveTab] = useState<TabName>('context')
+  const [liveData, setLiveData] = useState<LiveData | null>(null)
+  const [dataError, setDataError] = useState<string | null>(null)
+
+  // Fetch live detection data every time panel opens
+  useEffect(() => {
+    if (!props.isOpen) return
+    setDataError(null)
+    fetch('/api/setup/detect')
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then(d => setLiveData(d))
+      .catch(err => setDataError(err.message))
+  }, [props.isOpen])
+
+  if (!props.isOpen) return null
 
   return (
-    <>
-      {/* Panel (toggle button is integrated into HAPI's toolbar in router.tsx) */}
-      <div
-        className="flex h-full min-h-0 flex-col border-l border-[var(--app-border)]
-                   bg-[var(--app-bg)] transition-all duration-200"
-        style={{
-          width: props.isOpen ? '280px' : '0px',
-          overflow: props.isOpen ? 'visible' : 'hidden',
-          flexShrink: 0
-        }}
-      >
-        {props.isOpen && (
-          <>
-            <div className="flex shrink-0 border-b border-[var(--app-border)]">
-              {([
-                ['context', '📋 关联'],
-                ['skills', '🧩 Skills'],
-                ['cron', '⏰ 定时']
-              ] as [TabName, string][]).map(([tab, label]) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 px-3 py-2 text-xs transition-colors
-                    ${activeTab === tab
-                      ? 'border-b-2 border-[var(--app-link)] text-[var(--app-link)]'
-                      : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
-                    }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="app-scroll-y flex-1 min-h-0 p-3">
-              {activeTab === 'context' && <ContextTab />}
-              {activeTab === 'skills' && <SkillsTab />}
-              {activeTab === 'cron' && <CronTab />}
-            </div>
-          </>
-        )}
+    <div
+      className="flex h-full min-h-0 flex-col border-l border-[var(--app-border)]
+                 bg-[var(--app-bg)]"
+      style={{ width: '280px', flexShrink: 0 }}
+    >
+      {/* Tabs */}
+      <div className="flex shrink-0 border-b border-[var(--app-border)]">
+        {([
+          ['context', '关联'],
+          ['skills', 'Skills'],
+          ['cron', '定时']
+        ] as [TabName, string][]).map(([tab, label]) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 px-3 py-2 text-xs transition-colors
+              ${activeTab === tab
+                ? 'border-b-2 border-[var(--app-link)] text-[var(--app-link)]'
+                : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
+              }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-    </>
+
+      {/* Tab content */}
+      <div className="app-scroll-y flex-1 min-h-0 p-3">
+        {dataError && (
+          <div className="mb-2 rounded bg-red-500/10 px-2 py-1.5 text-xs text-red-500">
+            检测失败: {dataError}
+          </div>
+        )}
+        {!liveData && !dataError && (
+          <div className="py-8 text-center text-xs text-[var(--app-hint)]">加载中...</div>
+        )}
+        {liveData && activeTab === 'context' && <ContextTab data={liveData} />}
+        {liveData && activeTab === 'skills' && <SkillsTab data={liveData} />}
+        {liveData && activeTab === 'cron' && <CronTab />}
+      </div>
+    </div>
   )
 }
 
+// --- Shared UI ---
 function SectionTitle(props: { children: string }) {
+  return <div className="mb-1.5 text-[9px] uppercase tracking-wider text-[var(--app-hint)]">{props.children}</div>
+}
+
+function Card(props: { title: string; subtitle?: string; borderColor?: string; children?: React.ReactNode }) {
   return (
-    <div className="mb-1.5 text-[9px] uppercase tracking-wider text-[var(--app-hint)]">
+    <div className="mb-1 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs"
+      style={props.borderColor ? { borderLeft: `3px solid ${props.borderColor}` } : undefined}>
+      <div className="font-medium text-[var(--app-fg)]">{props.title}</div>
+      {props.subtitle && <div className="mt-0.5 text-[11px] text-[var(--app-hint)]">{props.subtitle}</div>}
       {props.children}
     </div>
   )
 }
 
-function Card(props: { title: string; subtitle?: string; status?: 'active' | 'paused'; borderColor?: string }) {
+function StatusBadge(props: { active: boolean; activeLabel?: string; inactiveLabel?: string }) {
   return (
-    <div
-      className="mb-1 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs"
-      style={props.borderColor ? { borderLeft: `3px solid ${props.borderColor}` } : undefined}
-    >
-      <div className="font-medium text-[var(--app-fg)]">{props.title}</div>
-      {props.subtitle && (
-        <div className="mt-0.5 text-[11px] text-[var(--app-hint)]">{props.subtitle}</div>
-      )}
-      {props.status && (
-        <span
-          className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px]
-            ${props.status === 'active'
-              ? 'bg-emerald-500/10 text-emerald-500'
-              : 'bg-amber-500/10 text-amber-500'
-            }`}
-        >
-          {props.status === 'active' ? '🟢 活跃' : '🟡 暂停'}
-        </span>
-      )}
-    </div>
+    <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px]
+      ${props.active ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+      {props.active ? (props.activeLabel || '已连接') : (props.inactiveLabel || '未连接')}
+    </span>
   )
 }
 
-// v1 placeholder — data will be populated by config system + real API calls
-function ContextTab() {
+// --- Context Tab (live data) ---
+function ContextTab({ data }: { data: LiveData }) {
   return (
     <>
-      <SectionTitle>📦 GitLab · 当前项目</SectionTitle>
-      <Card title="!6 海口测试方案" status="paused" borderColor="#fd971f" />
-      <Card title="!3 DS V4 Flash 测试" status="active" borderColor="#a6e22e" />
+      {/* Git */}
+      <SectionTitle>📦 Git 仓库</SectionTitle>
+      <Card title="GitLab" borderColor={data.gitlab.found ? '#a6e22e' : '#fd971f'}>
+        <StatusBadge active={data.gitlab.found}
+          activeLabel={data.gitlab.user ? `已认证 · ${data.gitlab.user}` : '已认证'}
+          inactiveLabel={data.gitlab.error || '未检测到'} />
+      </Card>
+      <Card title="GitHub" borderColor={data.github.found ? '#a6e22e' : '#fd971f'}>
+        <StatusBadge active={data.github.found}
+          activeLabel={data.github.user ? `已认证 · ${data.github.user}` : '已认证'}
+          inactiveLabel={data.github.error || '未检测到'} />
+      </Card>
 
+      {/* Obsidian */}
       <div className="mt-3">
         <SectionTitle>📄 知识库</SectionTitle>
-        <Card title="DS V4 Flash 性能测试" subtitle="2026-06-15 · 海口" />
-        <Card title="模型选型对比分析" subtitle="2026-06-10" />
+        {data.obsidian.found ? (
+          data.obsidian.vaults.map(v => (
+            <Card key={v.path} title={v.name} subtitle={v.path} borderColor="#66d9ef" />
+          ))
+        ) : (
+          <div className="text-xs text-[var(--app-hint)]">未检测到 Obsidian Vault</div>
+        )}
       </div>
 
+      {/* Machines */}
       <div className="mt-3">
-        <SectionTitle>💻 算力</SectionTitle>
-        <div className="mb-1 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-[var(--app-fg)]">海口 A100×8</span>
-            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500">空闲</span>
-          </div>
-          <div className="mt-0.5 text-[11px] text-[var(--app-hint)]">8×A100 80G · 1.2T RAM</div>
-        </div>
-        <Card title="macmini (本地)" subtitle="M4 Pro · 64G RAM" status="active" />
+        <SectionTitle>{`💻 机器 (${data.machines.length})`}</SectionTitle>
+        {data.machines.length > 0 ? (
+          data.machines.map(m => (
+            <Card key={m.host} title={m.host} borderColor={m.hasKey ? '#a6e22e' : '#fd971f'}>
+              <div className="mt-1 flex gap-1">
+                {m.hasKey && <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] text-emerald-500">🔑 SSH Key</span>}
+                {m.hasConfig && <span className="rounded bg-[var(--app-link)]/10 px-1 py-0.5 text-[10px] text-[var(--app-link)]">config</span>}
+                {!m.hasKey && <span className="rounded bg-amber-500/10 px-1 py-0.5 text-[10px] text-amber-500">无密钥</span>}
+              </div>
+            </Card>
+          ))
+        ) : (
+          <div className="text-xs text-[var(--app-hint)]">未检测到 SSH 机器</div>
+        )}
       </div>
 
+      {/* Compute */}
       <div className="mt-3">
         <SectionTitle>📊 数据 · 繁Files</SectionTitle>
-        <Card title="/data/models/" subtitle="3 safetensors · 15.3 GB" />
-        <div className="mt-1 text-center text-[10px] text-[var(--app-hint)]">
-          最近扫描: 2026-06-17 09:30
+        <div className="text-xs text-[var(--app-hint)]">
+          繁Files 集成将在下一步实现
         </div>
       </div>
     </>
   )
 }
 
-function SkillsTab() {
-  const skills = [
-    { name: 'brainstorming', desc: '设计讨论', enabled: true },
-    { name: 'debugging', desc: '系统调试', enabled: true },
-    { name: 'issue', desc: 'Issue 管理', enabled: true },
-    { name: 'code-review', desc: '代码审查', enabled: false },
-    { name: '文献搜索 (WIP)', desc: '自定义 Skill', enabled: true }
-  ]
-
+// --- Skills Tab (live from filesystem) ---
+function SkillsTab({ data }: { data: LiveData }) {
   return (
     <>
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold text-[var(--app-fg)]">已安装 Skills</span>
-        <span className="cursor-pointer rounded bg-[var(--app-link)]/10 px-1.5 py-0.5 text-[10px] text-[var(--app-link)]">
-          + 安装
+        <span className="text-xs font-semibold text-[var(--app-fg)]">
+          {`已安装 Skills (${data.skills.length})`}
         </span>
       </div>
 
-      {skills.map((s) => (
-        <div
-          key={s.name}
-          className="mb-0.5 flex items-center justify-between rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs"
-        >
-          <div>
-            <div className="text-[var(--app-fg)]">{s.name}</div>
-            <div className="text-[11px] text-[var(--app-hint)]">{s.desc}</div>
+      {data.skills.length > 0 ? (
+        data.skills.map(s => (
+          <div key={s.name}
+            className="mb-0.5 flex items-center justify-between rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs">
+            <div>
+              <div className="text-[var(--app-fg)]">{s.name}</div>
+            </div>
+            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500">✓</span>
           </div>
-          <button
-            type="button"
-            className={`h-[18px] w-8 rounded-full transition-colors relative
-              ${s.enabled ? 'bg-[var(--app-link)]' : 'bg-[var(--app-border)]'}`}
-          >
-            <span
-              className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white transition-all
-                ${s.enabled ? 'left-4' : 'left-0.5'}`}
-            />
-          </button>
+        ))
+      ) : (
+        <div className="text-xs text-[var(--app-hint)]">
+          未检测到 Skills。安装后会自动出现在这里。
         </div>
-      ))}
-
-      <div className="mt-3 border-t border-[var(--app-border)] pt-2">
-        <div className="mb-1.5 text-[10px] text-[var(--app-hint)]">fan-skill 市场</div>
-        <Card title="📦 bioinfo-lackey" subtitle="生信辅助 · ⬇ 1.2k" />
-        <Card title="📦 scAgent-skill" subtitle="单细胞分析 · ⬇ 856" />
-      </div>
+      )}
     </>
   )
 }
 
+// --- Cron Tab (still placeholder — needs scheduled_tasks.json reader) ---
 function CronTab() {
   return (
     <>
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-[var(--app-fg)]">定时任务</span>
-        <span className="cursor-pointer rounded bg-[var(--app-link)]/10 px-1.5 py-0.5 text-[10px] text-[var(--app-link)]">
-          + 新建
-        </span>
       </div>
 
-      <div className="mb-2 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs"
-        style={{ borderLeft: '3px solid #a6e22e' }}>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-[var(--app-fg)]">每日进展汇总</span>
-          <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500">活跃</span>
-        </div>
-        <div className="mt-0.5 text-[11px] text-[var(--app-hint)]">每天 18:00 · 汇总 GitLab Issue</div>
-        <div className="text-[10px] text-[var(--app-hint)]">下次: 2026-06-17 18:00</div>
-      </div>
-
-      <div className="mb-2 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs"
-        style={{ borderLeft: '3px solid #a6e22e' }}>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-[var(--app-fg)]">FastScale 周扫描</span>
-          <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500">活跃</span>
-        </div>
-        <div className="mt-0.5 text-[11px] text-[var(--app-hint)]">每周一 09:00 · 扫描 A100 → fan-files</div>
-        <div className="text-[10px] text-[var(--app-hint)]">下次: 2026-06-22 09:00</div>
-      </div>
-
-      <div className="mb-2 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs"
-        style={{ borderLeft: '3px solid #fd971f' }}>
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-[var(--app-fg)]">GPU 状态心跳</span>
-          <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-500">暂停</span>
-        </div>
-        <div className="mt-0.5 text-[11px] text-[var(--app-hint)]">每 30min · 检查 GPU 在线状态</div>
-      </div>
-
-      <div className="mt-3 border-t border-[var(--app-border)] pt-2">
-        <div className="mb-1.5 text-[10px] text-[var(--app-hint)]">执行日志</div>
-        <div className="border-b border-[var(--app-border)] py-0.5 text-[10px] text-emerald-500">
-          ✓ 06-17 09:00 FastScale 扫描 · 846 文件 · 54s
-        </div>
-        <div className="border-b border-[var(--app-border)] py-0.5 text-[10px] text-emerald-500">
-          ✓ 06-16 18:00 每日汇总 · 3 issues 更新
-        </div>
-        <div className="py-0.5 text-[10px] text-red-500">
-          ✗ 06-16 09:30 GPU 心跳 · 超时
-        </div>
+      <div className="py-8 text-center text-xs text-[var(--app-hint)]">
+        Cron 任务面板将在下一步实现。<br />
+        将读取 Claude Code 的 scheduled_tasks.json
       </div>
     </>
   )
