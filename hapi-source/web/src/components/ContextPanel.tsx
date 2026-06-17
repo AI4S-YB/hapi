@@ -10,23 +10,7 @@ export function ContextPanel(props: {
 
   return (
     <>
-      {/* Toggle button */}
-      <button
-        type="button"
-        onClick={props.onToggle}
-        className="fixed right-2 top-10 z-50 flex h-7 w-7 items-center justify-center
-                   rounded-md border border-[var(--app-border)] bg-[var(--app-bg)]
-                   text-[var(--app-fg)] shadow-sm transition-all hover:bg-[var(--app-secondary-bg)]"
-        style={{
-          right: props.isOpen ? '292px' : '8px',
-          transition: 'right 0.2s ease'
-        }}
-        title={props.isOpen ? '关闭面板 (ESC)' : '打开面板'}
-      >
-        {props.isOpen ? '▶' : '◀'}
-      </button>
-
-      {/* Panel */}
+      {/* Panel (toggle button is integrated into HAPI's toolbar in router.tsx) */}
       <div
         className="flex h-full min-h-0 flex-col border-l border-[var(--app-border)]
                    bg-[var(--app-bg)] transition-all duration-200"
@@ -104,6 +88,7 @@ function Card(props: { title: string; subtitle?: string; status?: 'active' | 'pa
   )
 }
 
+// v1 placeholder — data will be populated by config system + real API calls
 function ContextTab() {
   return (
     <>

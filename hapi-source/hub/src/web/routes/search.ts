@@ -8,21 +8,29 @@ interface SearchResults {
   gitlab: Array<{ iid: string; title: string }>
 }
 
+function sanitizeQuery(raw: string): string {
+  // Strip any characters that could be used for command injection
+  // Allow: alphanumeric, CJK, spaces, basic punctuation
+  return raw.trim().replace(/[^\w\s一-鿿぀-ゟ가-힯\-_.@/]/g, '').slice(0, 100)
+}
+
 export function createSearchRoutes(): Hono {
   const app = new Hono()
 
   app.get('/api/search', async (c) => {
-    const q = c.req.query('q') || ''
+    const rawQ = c.req.query('q') || ''
     const results: SearchResults = { obsidian: [], gitlab: [] }
 
-    if (!q) {
+    const q = sanitizeQuery(rawQ)
+    if (!q || q.length < 2) {
       return c.json(results)
     }
 
-    // Search Obsidian vault
+    // Search Obsidian vault with grep
+    // '--' prevents the query from being interpreted as a flag
     try {
       const grep = spawnSync('grep', [
-        '-rli', q, OBSIDIAN_VAULT,
+        '-rli', '--', q, OBSIDIAN_VAULT,
         '--include=*.md'
       ], { timeout: 5000 })
       if (grep.stdout) {
@@ -36,24 +44,28 @@ export function createSearchRoutes(): Hono {
       // grep not found or timeout
     }
 
-    // Search GitLab via glab
+    // Search GitLab issues via glab API
+    // glab api proxies GitLab REST API with existing auth
     try {
       const glab = spawnSync('glab', [
-        'search', 'issues', q,
-        '--search-scope=all',
-        '--per-page=5'
+        'api',
+        `search?scope=issues&search=${encodeURIComponent(q)}&per_page=5`
       ], { timeout: 8000 })
       if (glab.stdout) {
-        const lines = new TextDecoder().decode(glab.stdout).trim().split('\n').filter(Boolean)
-        results.gitlab = lines
-          .filter((l: string) => /^\d+/.test(l))
-          .map((l: string) => {
-            const parts = l.split(/\s+/)
-            return { iid: parts[0], title: parts.slice(1).join(' ') }
-          })
+        try {
+          const data = JSON.parse(new TextDecoder().decode(glab.stdout))
+          if (Array.isArray(data)) {
+            results.gitlab = data.slice(0, 5).map((item: any) => ({
+              iid: String(item.iid || ''),
+              title: item.title || ''
+            }))
+          }
+        } catch {
+          // JSON parse failed — fall back to empty results
+        }
       }
     } catch {
-      // glab not found or error
+      // glab not found, not authenticated, or API error
     }
 
     return c.json(results)

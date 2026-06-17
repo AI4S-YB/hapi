@@ -202,10 +202,14 @@ function SessionsPage() {
         markSessionSeen(selectedSessionId, selectedSession.updatedAt)
     }, [selectedSessionId, selectedSession?.updatedAt])
 
-    // ⌘K toggle for search modal
+    // ⌘K toggle for search modal (skip when user is typing in inputs)
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                const tag = (e.target as HTMLElement)?.tagName
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) {
+                    return
+                }
                 e.preventDefault()
                 setIsSearchOpen(prev => !prev)
             }
@@ -517,6 +521,21 @@ function SessionsPage() {
                                 title={t('sessions.new')}
                             >
                                 <PlusIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsPanelOpen(prev => !prev)}
+                                className={`p-1.5 rounded-full transition-colors
+                                  ${isPanelOpen
+                                    ? 'text-[var(--app-fg)] bg-[var(--app-secondary-bg)]'
+                                    : 'text-[var(--app-hint)] hover:text-[var(--app-fg)] hover:bg-[var(--app-subtle-bg)]'
+                                  }`}
+                                title={isPanelOpen ? '关闭面板' : '打开面板'}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="15" y1="3" x2="15" y2="21" />
+                                </svg>
                             </button>
                         </div>
                     </div>
