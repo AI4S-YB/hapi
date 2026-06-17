@@ -31,6 +31,35 @@
       nav.appendChild(a);
     });
 
+    // Add spacer
+    var spacer = document.createElement('span');
+    spacer.style.flex = '1';
+    nav.appendChild(spacer);
+
+    // Search trigger button
+    var searchBtn = document.createElement('button');
+    searchBtn.id = 'nav-search-btn';
+    searchBtn.textContent = '🔍';
+    searchBtn.title = '搜索 (⌘K)';
+    searchBtn.style.cssText = 'background:none;border:1px solid #333;color:#fff;cursor:pointer;font-size:14px;' +
+      'padding:4px 10px;border-radius:4px;margin-right:4px;height:26px;line-height:1';
+    searchBtn.addEventListener('click', function () {
+      if (window.hapiSearch) window.hapiSearch.toggle();
+    });
+    nav.appendChild(searchBtn);
+
+    // Panel toggle button
+    var panelBtn = document.createElement('button');
+    panelBtn.id = 'nav-panel-btn';
+    panelBtn.textContent = '📋';
+    panelBtn.title = '切换面板 (ESC)';
+    panelBtn.style.cssText = 'background:none;border:1px solid #333;color:#fff;cursor:pointer;font-size:14px;' +
+      'padding:4px 10px;border-radius:4px;height:26px;line-height:1';
+    panelBtn.addEventListener('click', function () {
+      if (window.hapiPanel) window.hapiPanel.toggle();
+    });
+    nav.appendChild(panelBtn);
+
     // Insert as first child of body
     if (document.body && document.body.firstChild) {
       document.body.insertBefore(nav, document.body.firstChild);
