@@ -41,6 +41,8 @@ import { inactiveSessionCanResume } from '@/lib/sessionResume'
 import { markSessionSeen } from '@/lib/sessionLastSeen'
 import { clearCodexImportedSession, markCodexSessionsImported } from '@/lib/codexImportedSessions'
 import type { Machine, CodexDuplicateSessionGroup, CodexLocalSessionSummary } from '@/types/api'
+import { ContextPanel } from '@/components/ContextPanel'
+import { SearchModal } from '@/components/SearchModal'
 import FilesPage from '@/routes/sessions/files'
 import FilePage from '@/routes/sessions/file'
 import TerminalPage from '@/routes/sessions/terminal'
@@ -170,6 +172,8 @@ function SessionsPage() {
     const [duplicateSessionGroups, setDuplicateSessionGroups] = useState<CodexDuplicateSessionGroup[]>([])
     const [isDuplicateMergeConfirmOpen, setIsDuplicateMergeConfirmOpen] = useState(false)
     const [isMergingDuplicateSessions, setIsMergingDuplicateSessions] = useState(false)
+    const [isPanelOpen, setIsPanelOpen] = useState(false)
+    const [isSearchOpen, setIsSearchOpen] = useState(false)
 
     const handleRefresh = useCallback(() => {
         void refetch()
@@ -197,6 +201,19 @@ function SessionsPage() {
         }
         markSessionSeen(selectedSessionId, selectedSession.updatedAt)
     }, [selectedSessionId, selectedSession?.updatedAt])
+
+    // ⌘K toggle for search modal
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault()
+                setIsSearchOpen(prev => !prev)
+            }
+        }
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+    }, [])
+
     const currentCodexSessionId = selectedSession?.metadata?.flavor === 'codex'
         ? (selectedSession.metadata.agentSessionId ?? null)
         : null
@@ -543,6 +560,17 @@ function SessionsPage() {
                 </div>
             </div>
             </div>
+
+            {/* Column 3: Context Panel (NEW) */}
+            <ContextPanel
+                isOpen={isPanelOpen}
+                onToggle={() => setIsPanelOpen(prev => !prev)}
+            />
+
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+            />
             {/* 中文注释：这里展示的是本地 Codex transcript 列表；默认尝试勾选当前 Hapi 会话关联的 Codex thread。 */}
             <CodexSessionSyncDialog
                 isOpen={isSyncConfirmOpen}
