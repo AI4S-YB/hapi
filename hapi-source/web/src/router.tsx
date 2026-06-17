@@ -186,7 +186,11 @@ function SessionsPage() {
                 if (!d.configured) setShowSetup(true)
                 setSetupChecked(true)
             })
-            .catch(() => setSetupChecked(true))
+            .catch(() => {
+                // If config endpoint is unreachable, still show setup
+                setShowSetup(true)
+                setSetupChecked(true)
+            })
     }, [])
 
     const handleRefresh = useCallback(() => {
