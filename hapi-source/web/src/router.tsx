@@ -42,7 +42,6 @@ import { markSessionSeen } from '@/lib/sessionLastSeen'
 import { clearCodexImportedSession, markCodexSessionsImported } from '@/lib/codexImportedSessions'
 import type { Machine, CodexDuplicateSessionGroup, CodexLocalSessionSummary } from '@/types/api'
 import { ContextPanel } from '@/components/ContextPanel'
-import { SearchModal } from '@/components/SearchModal'
 import { SetupWizard } from '@/components/SetupWizard'
 import FilesPage from '@/routes/sessions/files'
 import FilePage from '@/routes/sessions/file'
@@ -174,7 +173,6 @@ function SessionsPage() {
     const [isDuplicateMergeConfirmOpen, setIsDuplicateMergeConfirmOpen] = useState(false)
     const [isMergingDuplicateSessions, setIsMergingDuplicateSessions] = useState(false)
     const [isPanelOpen, setIsPanelOpen] = useState(false)
-    const [isSearchOpen, setIsSearchOpen] = useState(false)
     const [showSetup, setShowSetup] = useState(false)
     const [setupChecked, setSetupChecked] = useState(false)
 
@@ -223,22 +221,6 @@ function SessionsPage() {
         }
         markSessionSeen(selectedSessionId, selectedSession.updatedAt)
     }, [selectedSessionId, selectedSession?.updatedAt])
-
-    // ⌘K toggle for search modal (skip when user is typing in inputs)
-    useEffect(() => {
-        const onKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                const tag = (e.target as HTMLElement)?.tagName
-                if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) {
-                    return
-                }
-                e.preventDefault()
-                setIsSearchOpen(prev => !prev)
-            }
-        }
-        window.addEventListener('keydown', onKeyDown)
-        return () => window.removeEventListener('keydown', onKeyDown)
-    }, [])
 
     const currentCodexSessionId = selectedSession?.metadata?.flavor === 'codex'
         ? (selectedSession.metadata.agentSessionId ?? null)
@@ -609,10 +591,6 @@ function SessionsPage() {
             {/* Column 3: Context Panel (NEW) */}
             <ContextPanel isOpen={isPanelOpen} projectHint={projectHint} />
 
-            <SearchModal
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-            />
             {/* 中文注释：这里展示的是本地 Codex transcript 列表；默认尝试勾选当前 Hapi 会话关联的 Codex thread。 */}
             <CodexSessionSyncDialog
                 isOpen={isSyncConfirmOpen}
