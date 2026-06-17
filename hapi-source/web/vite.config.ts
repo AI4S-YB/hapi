@@ -56,6 +56,10 @@ export default defineConfig({
                 target: hubTarget,
                 changeOrigin: true
             },
+            '/shell': {
+                target: hubTarget,
+                changeOrigin: true
+            },
             '/socket.io': {
                 target: hubTarget,
                 ws: true

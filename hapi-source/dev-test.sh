@@ -19,6 +19,8 @@ echo ""
 # Clean up any leftover test processes
 pkill -f "HAPI_LISTEN_PORT=3007" 2>/dev/null || true
 pkill -f "VITE_HUB_PROXY=http://127.0.0.1:3007" 2>/dev/null || true
+lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+lsof -ti:3007 | xargs kill -9 2>/dev/null || true
 sleep 1
 
 # Start hub on port 3007
