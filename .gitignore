@@ -3,3 +3,5 @@ node_modules/
 .DS_Store
 *.log
 /tmp/
+cli/tools/archives/
+hapi-source/cli/tools/archives/
