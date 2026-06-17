@@ -175,7 +175,7 @@ function detectSkills(): DetectedSkill[] {
 export function createSetupRoutes(): Hono {
   const app = new Hono()
 
-  app.get('/api/setup/detect', async (c) => {
+  app.get('/shell/setup/detect', async (c) => {
     const result: DetectionResult = {
       obsidian: detectObsidian(),
       github: detectCli('gh', ['auth', 'status'], { userKey: 'Logged in to github.com as', urlKey: 'github.com' }),
@@ -187,7 +187,7 @@ export function createSetupRoutes(): Hono {
   })
 
   // Save confirmed config
-  app.post('/api/setup/save', async (c) => {
+  app.post('/shell/setup/save', async (c) => {
     try {
       const body = await c.req.json()
       if (!existsSync(CONFIG_DIR)) {
@@ -201,7 +201,7 @@ export function createSetupRoutes(): Hono {
   })
 
   // Read saved config
-  app.get('/api/config', async (c) => {
+  app.get('/shell/config', async (c) => {
     if (!existsSync(CONFIG_PATH)) {
       return c.json({ configured: false })
     }

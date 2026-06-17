@@ -24,7 +24,7 @@ export function ContextPanel(props: PanelProps) {
   useEffect(() => {
     if (!props.isOpen) return
     setDataError(null)
-    fetch('/api/setup/detect')
+    fetch('/shell/setup/detect')
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then(d => setLiveData(d))
       .catch(err => setDataError(err.message))
@@ -206,7 +206,7 @@ function CronTab() {
   } | null>(null)
 
   useEffect(() => {
-    fetch('/api/cron')
+    fetch('/shell/cron')
       .then(r => r.json())
       .then(d => setCronData(d))
       .catch(() => setCronData(null))

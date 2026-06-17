@@ -44,7 +44,7 @@ export function SearchModal(props: {
     setActiveIdx(-1)
 
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
+      const res = await fetch(`/shell/search?q=${encodeURIComponent(q.trim())}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
 

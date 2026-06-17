@@ -180,7 +180,7 @@ function SessionsPage() {
 
     // Check if setup is needed on first load
     useEffect(() => {
-        fetch('/api/config')
+        fetch('/shell/config')
             .then(r => r.json())
             .then(d => {
                 if (!d.configured) setShowSetup(true)

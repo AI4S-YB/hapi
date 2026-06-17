@@ -21,7 +21,7 @@ export function SetupWizard(props: {
     setStep('detecting')
     setError(null)
     try {
-      const res = await fetch('/api/setup/detect')
+      const res = await fetch('/shell/setup/detect')
       if (!res.ok) throw new Error('Detection failed')
       const d: DetectionResult = await res.json()
       setData(d)
@@ -62,7 +62,7 @@ export function SetupWizard(props: {
         skills: data?.skills.map(s => s.name),
         configuredAt: new Date().toISOString()
       }
-      const res = await fetch('/api/setup/save', {
+      const res = await fetch('/shell/setup/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)

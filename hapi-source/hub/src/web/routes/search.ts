@@ -17,7 +17,7 @@ function sanitizeQuery(raw: string): string {
 export function createSearchRoutes(): Hono {
   const app = new Hono()
 
-  app.get('/api/search', async (c) => {
+  app.get('/shell/search', async (c) => {
     const rawQ = c.req.query('q') || ''
     const results: SearchResults = { obsidian: [], gitlab: [] }
 

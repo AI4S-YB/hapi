@@ -173,7 +173,7 @@ function getCrontabTasks(): CronTask[] {
 export function createCronRoutes(): Hono {
   const app = new Hono()
 
-  app.get('/api/cron', async (c) => {
+  app.get('/shell/cron', async (c) => {
     const ccTasks = getClaudeCodeCronTasks()
     const launchdTasks = getLaunchdTasks()
     const cronTasks = getCrontabTasks()
