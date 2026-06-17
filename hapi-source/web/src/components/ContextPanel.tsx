@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 
 type TabName = 'context' | 'skills' | 'cron'
 
-// Data shape from /api/setup/detect
 interface LiveData {
   obsidian: { found: boolean; vaults: Array<{ name: string; path: string }> }
   github: { found: boolean; user?: string; error?: string }
@@ -11,8 +10,15 @@ interface LiveData {
   skills: Array<{ name: string }>
 }
 
+interface SearchItem {
+  source: 'obsidian' | 'gitlab'
+  title: string
+  subtitle: string
+}
+
 interface PanelProps {
   isOpen: boolean
+  projectHint?: string  // derived from selected session metadata
 }
 
 export function ContextPanel(props: PanelProps) {
@@ -20,7 +26,6 @@ export function ContextPanel(props: PanelProps) {
   const [liveData, setLiveData] = useState<LiveData | null>(null)
   const [dataError, setDataError] = useState<string | null>(null)
 
-  // Fetch live detection data every time panel opens
   useEffect(() => {
     if (!props.isOpen) return
     setDataError(null)
@@ -38,39 +43,33 @@ export function ContextPanel(props: PanelProps) {
                  bg-[var(--app-bg)]"
       style={{ width: '280px', flexShrink: 0 }}
     >
-      {/* Tabs */}
       <div className="flex shrink-0 border-b border-[var(--app-border)]">
         {([
           ['context', '关联'],
           ['skills', 'Skills'],
           ['cron', '定时']
         ] as [TabName, string][]).map(([tab, label]) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
+          <button key={tab} type="button" onClick={() => setActiveTab(tab)}
             className={`flex-1 px-3 py-2 text-xs transition-colors
               ${activeTab === tab
                 ? 'border-b-2 border-[var(--app-link)] text-[var(--app-link)]'
                 : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
-              }`}
-          >
+              }`}>
             {label}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
       <div className="app-scroll-y flex-1 min-h-0 p-3">
         {dataError && (
           <div className="mb-2 rounded bg-red-500/10 px-2 py-1.5 text-xs text-red-500">
-            检测失败: {dataError}
+            {dataError}
           </div>
         )}
         {!liveData && !dataError && (
           <div className="py-8 text-center text-xs text-[var(--app-hint)]">加载中...</div>
         )}
-        {liveData && activeTab === 'context' && <ContextTab data={liveData} />}
+        {liveData && activeTab === 'context' && <ContextTab data={liveData} projectHint={props.projectHint} />}
         {liveData && activeTab === 'skills' && <SkillsTab data={liveData} />}
         {liveData && activeTab === 'cron' && <CronTab />}
       </div>
@@ -78,90 +77,99 @@ export function ContextPanel(props: PanelProps) {
   )
 }
 
-// --- Shared UI ---
-function SectionTitle(props: { children: string }) {
-  return <div className="mb-1.5 text-[9px] uppercase tracking-wider text-[var(--app-hint)]">{props.children}</div>
-}
+// --- Context Tab: mini dashboard with real search results ---
+function ContextTab({ data, projectHint }: { data: LiveData; projectHint?: string }) {
+  const query = projectHint || ''
+  const [results, setResults] = useState<SearchItem[]>([])
+  const [searching, setSearching] = useState(false)
 
-function Card(props: { title: string; subtitle?: string; borderColor?: string; children?: React.ReactNode }) {
-  return (
-    <div className="mb-1 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs"
-      style={props.borderColor ? { borderLeft: `3px solid ${props.borderColor}` } : undefined}>
-      <div className="font-medium text-[var(--app-fg)]">{props.title}</div>
-      {props.subtitle && <div className="mt-0.5 text-[11px] text-[var(--app-hint)]">{props.subtitle}</div>}
-      {props.children}
-    </div>
-  )
-}
+  useEffect(() => {
+    if (!query) {
+      setResults([])
+      return
+    }
+    setSearching(true)
+    fetch(`/shell/search?q=${encodeURIComponent(query)}`)
+      .then(r => r.json())
+      .then(d => {
+        const items: SearchItem[] = [
+          ...(d.obsidian || []).map((r: { path: string; title: string }) => ({
+            source: 'obsidian' as const, title: r.title, subtitle: r.path
+          })),
+          ...(d.gitlab || []).map((r: { iid: string; title: string }) => ({
+            source: 'gitlab' as const, title: `!${r.iid} ${r.title}`, subtitle: r.title
+          }))
+        ]
+        setResults(items.slice(0, 8))
+      })
+      .catch(() => {})
+      .finally(() => setSearching(false))
+  }, [query])
 
-function StatusBadge(props: { active: boolean; activeLabel?: string; inactiveLabel?: string }) {
-  return (
-    <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px]
-      ${props.active ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
-      {props.active ? (props.activeLabel || '已连接') : (props.inactiveLabel || '未连接')}
-    </span>
-  )
-}
-
-// --- Context Tab (live data) ---
-function ContextTab({ data }: { data: LiveData }) {
   return (
     <>
-      {/* Git */}
-      <SectionTitle>📦 Git 仓库</SectionTitle>
-      <Card title="GitLab" borderColor={data.gitlab.found ? '#a6e22e' : '#fd971f'}>
-        <StatusBadge active={data.gitlab.found}
-          activeLabel={data.gitlab.user ? `已认证 · ${data.gitlab.user}` : '已认证'}
-          inactiveLabel={data.gitlab.error || '未检测到'} />
-      </Card>
-      <Card title="GitHub" borderColor={data.github.found ? '#a6e22e' : '#fd971f'}>
-        <StatusBadge active={data.github.found}
-          activeLabel={data.github.user ? `已认证 · ${data.github.user}` : '已认证'}
-          inactiveLabel={data.github.error || '未检测到'} />
-      </Card>
-
-      {/* Obsidian */}
-      <div className="mt-3">
-        <SectionTitle>📄 知识库</SectionTitle>
-        {data.obsidian.found ? (
-          data.obsidian.vaults.map(v => (
-            <Card key={v.path} title={v.name} subtitle={v.path} borderColor="#66d9ef" />
-          ))
-        ) : (
-          <div className="text-xs text-[var(--app-hint)]">未检测到 Obsidian Vault</div>
-        )}
+      {/* Quick summary bar */}
+      <div className="mb-2 flex gap-1 text-[10px]">
+        <span className={`rounded px-1.5 py-0.5 ${data.gitlab.found ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+          {data.gitlab.found ? 'GitLab' : 'GitLab ✗'}
+        </span>
+        <span className={`rounded px-1.5 py-0.5 ${data.obsidian.found ? 'bg-[var(--app-link)]/10 text-[var(--app-link)]' : 'bg-amber-500/10 text-amber-500'}`}>
+          {`知识库 ${data.obsidian.vaults.length || 0}`}
+        </span>
+        <span className="rounded bg-[var(--app-subtle-bg)] px-1.5 py-0.5 text-[var(--app-hint)]">
+          {`机器 ${data.machines.length}`}
+        </span>
       </div>
 
-      {/* Machines */}
-      <div className="mt-3">
-        <SectionTitle>{`💻 机器 (${data.machines.length})`}</SectionTitle>
-        {data.machines.length > 0 ? (
-          data.machines.map(m => (
-            <Card key={m.host} title={m.host} borderColor={m.hasKey ? '#a6e22e' : '#fd971f'}>
-              <div className="mt-1 flex gap-1">
-                {m.hasKey && <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] text-emerald-500">🔑 SSH Key</span>}
-                {m.hasConfig && <span className="rounded bg-[var(--app-link)]/10 px-1 py-0.5 text-[10px] text-[var(--app-link)]">config</span>}
-                {!m.hasKey && <span className="rounded bg-amber-500/10 px-1 py-0.5 text-[10px] text-amber-500">无密钥</span>}
+      {/* Related content — real search results */}
+      {query ? (
+        <>
+          <div className="mb-1 text-[9px] uppercase tracking-wider text-[var(--app-hint)]">
+            {`🔍 搜索 "${query}"`}
+          </div>
+          {searching ? (
+            <div className="py-4 text-center text-xs text-[var(--app-hint)]">搜索中...</div>
+          ) : results.length > 0 ? (
+            results.map((r, i) => (
+              <div key={i} className={`mb-0.5 rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-1.5 text-xs
+                ${r.source === 'gitlab' ? 'border-l-[3px] border-l-[var(--app-link)]' : 'border-l-[3px] border-l-[var(--app-link)]/50'}`}>
+                <div className="text-[var(--app-fg)] truncate">{r.title}</div>
+                <div className="mt-0.5 text-[10px] text-[var(--app-hint)] truncate">{r.subtitle}</div>
               </div>
-            </Card>
-          ))
-        ) : (
-          <div className="text-xs text-[var(--app-hint)]">未检测到 SSH 机器</div>
-        )}
-      </div>
-
-      {/* Compute */}
-      <div className="mt-3">
-        <SectionTitle>📊 数据 · 繁Files</SectionTitle>
-        <div className="text-xs text-[var(--app-hint)]">
-          繁Files 集成将在下一步实现
+            ))
+          ) : (
+            <div className="py-4 text-center text-xs text-[var(--app-hint)]">无匹配结果</div>
+          )}
+        </>
+      ) : (
+        <div className="py-4 text-center text-xs text-[var(--app-hint)]">
+          选择一个 Session 后将显示关联的<br />
+          GitLab Issues 和知识库笔记
         </div>
-      </div>
+      )}
+
+      {/* Machines — compact list */}
+      {data.machines.length > 0 && (
+        <div className="mt-3 border-t border-[var(--app-border)] pt-2">
+          <div className="mb-1 text-[9px] uppercase tracking-wider text-[var(--app-hint)]">
+            {`💻 机器 (${data.machines.length})`}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {data.machines.map(m => (
+              <span key={m.host}
+                className={`rounded px-1.5 py-0.5 text-[10px]
+                  ${m.hasKey ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+                {m.host}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   )
 }
 
-// --- Skills Tab (live from filesystem) ---
+// --- Skills Tab ---
 function SkillsTab({ data }: { data: LiveData }) {
   return (
     <>
@@ -175,23 +183,18 @@ function SkillsTab({ data }: { data: LiveData }) {
         data.skills.map(s => (
           <div key={s.name}
             className="mb-0.5 flex items-center justify-between rounded-md bg-[var(--app-subtle-bg)] px-2.5 py-2 text-xs">
-            <div>
-              <div className="text-[var(--app-fg)]">{s.name}</div>
-            </div>
+            <div className="text-[var(--app-fg)]">{s.name}</div>
             <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500">✓</span>
           </div>
         ))
       ) : (
-        <div className="text-xs text-[var(--app-hint)]">
-          未检测到 Skills。安装后会自动出现在这里。
-        </div>
+        <div className="text-xs text-[var(--app-hint)]">未检测到 Skills。安装后会自动出现。</div>
       )}
     </>
   )
 }
 
-// --- Cron Tab (live from /api/cron, platform-aware) ---
-
+// --- Cron Tab ---
 const SOURCE_LABELS: Record<string, string> = {
   'claude-code': 'Claude Code',
   'launchd': 'launchd',
@@ -225,12 +228,9 @@ function CronTab() {
         <span className="text-xs font-semibold text-[var(--app-fg)]">
           {`定时任务 (${tasks.length})`}
         </span>
-        <span className="text-[9px] text-[var(--app-hint)]">
-          {isMacOS ? 'macOS' : 'Linux'}
-        </span>
+        <span className="text-[9px] text-[var(--app-hint)]">{isMacOS ? 'macOS' : 'Linux'}</span>
       </div>
 
-      {/* Source layer legend */}
       <div className="mb-2 flex gap-1 text-[9px]">
         <LayerBadge label="Claude Code" found={sources.claudeCode?.found} available={sources.claudeCode?.available} />
         <LayerBadge label="launchd" found={sources.launchd?.found} available={sources.launchd?.available} />
@@ -265,10 +265,7 @@ function CronTab() {
         ))
       ) : (
         <div className="py-4 text-center text-xs text-[var(--app-hint)]">
-          未检测到用户定时任务。<br />
-          {isMacOS
-            ? '系统级 launchd 服务已自动过滤。'
-            : 'Claude Code 的 CronCreate 创建持久任务后会自动出现。'}
+          未检测到用户定时任务。
         </div>
       )}
     </>

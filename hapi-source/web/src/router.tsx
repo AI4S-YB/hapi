@@ -213,6 +213,10 @@ function SessionsPage() {
         () => selectedSessionId ? sessions.find((session) => session.id === selectedSessionId) ?? null : null,
         [selectedSessionId, sessions]
     )
+    const projectHint = useMemo(() => {
+        const meta = selectedSession?.metadata
+        return meta?.name || meta?.path?.split('/').filter(Boolean).pop() || undefined
+    }, [selectedSession])
     useEffect(() => {
         if (!selectedSessionId || !selectedSession) {
             return
@@ -603,7 +607,7 @@ function SessionsPage() {
             </div>
 
             {/* Column 3: Context Panel (NEW) */}
-            <ContextPanel isOpen={isPanelOpen} />
+            <ContextPanel isOpen={isPanelOpen} projectHint={projectHint} />
 
             <SearchModal
                 isOpen={isSearchOpen}
