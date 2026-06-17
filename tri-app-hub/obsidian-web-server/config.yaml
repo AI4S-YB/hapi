@@ -1,0 +1,3 @@
+port: 8686
+vault_path: "/Users/kentnf/Library/Mobile Documents/iCloud~md~obsidian/Documents/ObsidianVault"
+templates_dir: "./templates"

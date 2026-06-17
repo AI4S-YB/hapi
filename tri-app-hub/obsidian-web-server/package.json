@@ -1,0 +1,16 @@
+{
+  "name": "obsidian-web-server",
+  "version": "0.1.0",
+  "description": "Obsidian Vault web viewer with tri-app navigation",
+  "private": true,
+  "dependencies": {
+    "express": "^4.21.0",
+    "marked": "^14.1.0",
+    "js-yaml": "^4.1.0",
+    "highlight.js": "^11.10.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  }
+}

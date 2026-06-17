@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>知识库 — 目录浏览</title>
+  <link rel="stylesheet" href="/assets/nav.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fafafa; color: #333; }
+    .container { max-width: 900px; margin: 0 auto; padding: 60px 24px 40px; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    .breadcrumb { font-size: 13px; color: #888; margin-bottom: 20px; }
+    .breadcrumb a { color: #4fc3f7; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .dir-list { list-style: none; }
+    .dir-list li { margin-bottom: 2px; }
+    .dir-list a { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; font-size: 14px; text-decoration: none; }
+    .dir-list .dir a { color: #1565c0; font-weight: 500; }
+    .dir-list .dir a:hover { background: #e3f2fd; }
+    .dir-list .file a { color: #333; }
+    .dir-list .file a:hover { background: #f5f5f5; }
+    .icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+    .edit-link { margin-top: 32px; padding: 12px 16px; background: #f0f7ff; border: 1px solid #b3e5fc; border-radius: 6px; text-align: center; font-size: 14px; }
+    .edit-link a { color: #0277bd; text-decoration: none; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <script src="/assets/nav.js"></script>
+  <div class="container">
+    <h1>{{TITLE}}</h1>
+    <div class="breadcrumb">{{BREADCRUMB}}</div>
+    <ul class="dir-list">
+      {{ITEMS}}
+    </ul>
+  </div>
+</body>
+</html>
