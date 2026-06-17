@@ -500,7 +500,8 @@ function SessionsPage() {
             >
                 <div className="bg-[var(--app-bg)] pt-[env(safe-area-inset-top)]">
                     <div className="mx-auto w-full max-w-content flex items-center justify-between px-3 py-2">
-                        <div className="text-xs text-[var(--app-hint)]">
+                        <div className="text-xs text-[var(--app-hint)] flex items-center gap-2">
+                            <span className="rounded bg-[var(--app-link)]/10 px-1.5 py-0.5 text-[10px] text-[var(--app-link)]">Shell</span>
                             {t('sessions.count', { n: sessions.length, m: projectCount })}
                         </div>
                         <div className="flex items-center gap-2">
