@@ -41,7 +41,7 @@ import { inactiveSessionCanResume } from '@/lib/sessionResume'
 import { markSessionSeen } from '@/lib/sessionLastSeen'
 import { clearCodexImportedSession, markCodexSessionsImported } from '@/lib/codexImportedSessions'
 import type { Machine, CodexDuplicateSessionGroup, CodexLocalSessionSummary } from '@/types/api'
-import { ContextPanel } from '@/components/ContextPanel'
+import { SidebarTabs, IssuesPanel, NotesPanel, type SidebarTab } from '@/components/SidebarTabs'
 import { SetupWizard } from '@/components/SetupWizard'
 import FilesPage from '@/routes/sessions/files'
 import FilePage from '@/routes/sessions/file'
@@ -172,7 +172,7 @@ function SessionsPage() {
     const [duplicateSessionGroups, setDuplicateSessionGroups] = useState<CodexDuplicateSessionGroup[]>([])
     const [isDuplicateMergeConfirmOpen, setIsDuplicateMergeConfirmOpen] = useState(false)
     const [isMergingDuplicateSessions, setIsMergingDuplicateSessions] = useState(false)
-    const [isPanelOpen, setIsPanelOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState<SidebarTab>('sessions')
     const [showSetup, setShowSetup] = useState(false)
     const [setupChecked, setSetupChecked] = useState(false)
 
@@ -488,6 +488,11 @@ function SessionsPage() {
                 className={`${isSessionsIndex ? 'flex' : 'hidden lg:flex'} w-full shrink-0 flex-col bg-[var(--app-bg)]`}
                 style={{ '--sidebar-w': `${sidebar.width}px` } as React.CSSProperties}
             >
+                {/* Tab bar */}
+                <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+                {/* Sessions tab header */}
+                {activeTab === 'sessions' && (
                 <div className="bg-[var(--app-bg)] pt-[env(safe-area-inset-top)]">
                     <div className="mx-auto w-full max-w-content flex items-center justify-between px-3 py-2">
                         <div className="text-xs text-[var(--app-hint)]">
@@ -529,48 +534,39 @@ function SessionsPage() {
                             >
                                 <PlusIcon className="h-5 w-5" />
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsPanelOpen(prev => !prev)}
-                                className={`p-1.5 rounded-full transition-colors
-                                  ${isPanelOpen
-                                    ? 'text-[var(--app-fg)] bg-[var(--app-secondary-bg)]'
-                                    : 'text-[var(--app-hint)] hover:text-[var(--app-fg)] hover:bg-[var(--app-subtle-bg)]'
-                                  }`}
-                                title={isPanelOpen ? '关闭面板' : '打开面板'}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                    <line x1="9" y1="3" x2="9" y2="21" />
-                                    <line x1="15" y1="9" x2="15" y2="15" />
-                                </svg>
-                            </button>
                         </div>
                     </div>
                 </div>
+                )}
 
                 <div className="app-scroll-y flex-1 min-h-0 desktop-scrollbar-left">
-                    {error ? (
-                        <div className="mx-auto w-full max-w-content px-3 py-2">
-                            <div className="text-sm text-red-600">{error}</div>
-                        </div>
-                    ) : null}
-                    <SessionList
-                        sessions={sessions}
-                        selectedSessionId={selectedSessionId}
-                        onSelect={(sessionId) => navigate({
-                            to: '/sessions/$sessionId',
-                            params: { sessionId },
-                        })}
-                        onNewSession={() => navigate({ to: '/sessions/new' })}
-                        onNewSessionInDirectory={handleNewSessionInDirectory}
-                        onBrowse={() => navigate({ to: '/browse' })}
-                        onRefresh={handleRefresh}
-                        isLoading={isLoading}
-                        renderHeader={false}
-                        api={api}
-                        machineLabelsById={machineLabelsById}
-                    />
+                    {activeTab === 'sessions' && (
+                        <>
+                        {error ? (
+                            <div className="mx-auto w-full max-w-content px-3 py-2">
+                                <div className="text-sm text-red-600">{error}</div>
+                            </div>
+                        ) : null}
+                        <SessionList
+                            sessions={sessions}
+                            selectedSessionId={selectedSessionId}
+                            onSelect={(sessionId) => navigate({
+                                to: '/sessions/$sessionId',
+                                params: { sessionId },
+                            })}
+                            onNewSession={() => navigate({ to: '/sessions/new' })}
+                            onNewSessionInDirectory={handleNewSessionInDirectory}
+                            onBrowse={() => navigate({ to: '/browse' })}
+                            onRefresh={handleRefresh}
+                            isLoading={isLoading}
+                            renderHeader={false}
+                            api={api}
+                            machineLabelsById={machineLabelsById}
+                        />
+                        </>
+                    )}
+                    {activeTab === 'issues' && <IssuesPanel />}
+                    {activeTab === 'notes' && <NotesPanel />}
                 </div>
             </div>
 
@@ -587,9 +583,6 @@ function SessionsPage() {
                 </div>
             </div>
             </div>
-
-            {/* Column 3: Context Panel (NEW) */}
-            <ContextPanel isOpen={isPanelOpen} projectHint={projectHint} />
 
             {/* 中文注释：这里展示的是本地 Codex transcript 列表；默认尝试勾选当前 Hapi 会话关联的 Codex thread。 */}
             <CodexSessionSyncDialog
