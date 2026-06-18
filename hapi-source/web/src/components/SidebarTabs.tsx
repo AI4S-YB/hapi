@@ -45,7 +45,9 @@ export function SidebarTabs(props: SidebarTabsProps) {
   )
 }
 
-export function IssuesPanel() {
+export function IssuesPanel(props: {
+  onSelect?: (iid: string, repo: string) => void
+}) {
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<SearchItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -100,9 +102,11 @@ export function IssuesPanel() {
         {!loading && items.map((item, i) => (
           <a
             key={i}
-            href={`http://${window.location.hostname}:8080`}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              props.onSelect?.(item.iid || '', item.subtitle || '')
+            }}
             className="block border-b border-[var(--app-border)] px-3 py-2.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline"
           >
             <div className="text-[11px] font-medium text-[var(--app-fg)]">{item.title}</div>
@@ -114,7 +118,9 @@ export function IssuesPanel() {
   )
 }
 
-export function NotesPanel() {
+export function NotesPanel(props: {
+  onSelect?: (path: string) => void
+}) {
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<SearchItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -168,9 +174,11 @@ export function NotesPanel() {
         {!loading && items.map((item, i) => (
           <a
             key={i}
-            href={`http://${window.location.hostname}:8686/note?path=${encodeURIComponent(item.path || '')}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              props.onSelect?.(item.path || '')
+            }}
             className="block border-b border-[var(--app-border)] px-3 py-2.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline"
           >
             <div className="text-[11px] font-medium text-[var(--app-fg)]">{item.title}</div>

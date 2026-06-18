@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { spawnSync } from 'child_process'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 
 const OBSIDIAN_VAULT = `${process.env.HOME || '/tmp'}/Library/Mobile Documents/iCloud~md~obsidian/Documents/ObsidianVault`
 
@@ -69,6 +70,64 @@ export function createSearchRoutes(): Hono {
     }
 
     return c.json(results)
+  })
+
+  // GET /shell/issue?repo=...&iid=...
+  app.get('/shell/issue', async (c) => {
+    const repo = c.req.query('repo') || ''
+    const iid = c.req.query('iid') || ''
+    if (!repo || !iid) {
+      return c.json({ error: 'Missing repo or iid' }, 400)
+    }
+    try {
+      const glab = spawnSync('glab', ['issue', 'view', iid, '--repo', repo], { timeout: 8000 })
+      if (glab.status !== 0 || !glab.stdout) {
+        return c.json({ error: 'Issue not found' }, 404)
+      }
+      const raw = new TextDecoder().decode(glab.stdout)
+      const lines = raw.split('\n')
+      const meta: Record<string, string> = {}
+      let descStart = lines.length
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() === '--') { descStart = i; break }
+        const m = lines[i].match(/^(\w[\w\s]*?):\s*(.+)/)
+        if (m) meta[m[1].trim().toLowerCase()] = m[2].trim()
+      }
+      const description = lines.slice(descStart + 1).join('\n').trim()
+      return c.json({
+        iid, repo,
+        title: meta.title || '',
+        state: meta.state || '',
+        author: meta.author || '',
+        labels: meta.labels || '',
+        comments: meta.comments || '0',
+        description
+      })
+    } catch {
+      return c.json({ error: 'Failed to fetch issue' }, 500)
+    }
+  })
+
+  // GET /shell/note?path=...
+  app.get('/shell/note', async (c) => {
+    const notePath = c.req.query('path') || ''
+    if (!notePath) return c.json({ error: 'Missing path' }, 400)
+    const fullPath = `${OBSIDIAN_VAULT}/${notePath}`
+    if (!fullPath.startsWith(OBSIDIAN_VAULT)) {
+      return c.json({ error: 'Path traversal denied' }, 403)
+    }
+    try {
+      const content = readFileSync(fullPath, 'utf8')
+      const stat = statSync(fullPath)
+      return c.json({
+        path: notePath,
+        title: notePath.split('/').pop()?.replace('.md', '') || '',
+        content,
+        modifiedAt: stat?.mtime.toISOString() || ''
+      })
+    } catch {
+      return c.json({ error: 'Note not found' }, 404)
+    }
   })
 
   return app

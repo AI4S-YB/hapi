@@ -43,6 +43,8 @@ import { clearCodexImportedSession, markCodexSessionsImported } from '@/lib/code
 import type { Machine, CodexDuplicateSessionGroup, CodexLocalSessionSummary } from '@/types/api'
 import { SidebarTabs, IssuesPanel, NotesPanel, type SidebarTab } from '@/components/SidebarTabs'
 import { SetupWizard } from '@/components/SetupWizard'
+import { IssueView } from '@/components/IssueView'
+import { NoteView } from '@/components/NoteView'
 import FilesPage from '@/routes/sessions/files'
 import FilePage from '@/routes/sessions/file'
 import TerminalPage from '@/routes/sessions/terminal'
@@ -173,7 +175,17 @@ function SessionsPage() {
     const [isDuplicateMergeConfirmOpen, setIsDuplicateMergeConfirmOpen] = useState(false)
     const [isMergingDuplicateSessions, setIsMergingDuplicateSessions] = useState(false)
     const [activeTab, setActiveTab] = useState<SidebarTab>('sessions')
+    const [selectedIssue, setSelectedIssue] = useState<{ iid: string; repo: string } | null>(null)
+    const [selectedNote, setSelectedNote] = useState<{ path: string } | null>(null)
     const [showSetup, setShowSetup] = useState(false)
+
+    // Clear issue/note selection when switching to sessions tab
+    useEffect(() => {
+      if (activeTab === 'sessions') {
+        setSelectedIssue(null)
+        setSelectedNote(null)
+      }
+    }, [activeTab])
     const [setupChecked, setSetupChecked] = useState(false)
 
     // Check if setup is needed on first load
@@ -565,8 +577,12 @@ function SessionsPage() {
                         />
                         </>
                     )}
-                    {activeTab === 'issues' && <IssuesPanel />}
-                    {activeTab === 'notes' && <NotesPanel />}
+                    {activeTab === 'issues' && (
+                      <IssuesPanel onSelect={(iid, repo) => setSelectedIssue({ iid, repo })} />
+                    )}
+                    {activeTab === 'notes' && (
+                      <NotesPanel onSelect={(path) => setSelectedNote({ path })} />
+                    )}
                 </div>
             </div>
 
@@ -577,10 +593,32 @@ function SessionsPage() {
                 onPointerDown={sidebar.onPointerDown}
             />
 
-            <div className={`${isSessionsIndex ? 'hidden lg:flex' : 'flex'} min-w-0 flex-1 flex-col bg-[var(--app-bg)]`}>
+            <div className="min-w-0 flex-1 flex-col bg-[var(--app-bg)]"
+              style={{ display: isSessionsIndex && !selectedIssue && !selectedNote ? 'none' : 'flex' }}>
+              {selectedIssue ? (
+                <IssueView
+                  repo={selectedIssue.repo}
+                  iid={selectedIssue.iid}
+                  onDiscuss={() => {
+                    setActiveTab('sessions')
+                    setSelectedIssue(null)
+                    navigate({ to: '/sessions/new', search: {} })
+                  }}
+                />
+              ) : selectedNote ? (
+                <NoteView
+                  notePath={selectedNote.path}
+                  onDiscuss={() => {
+                    setActiveTab('sessions')
+                    setSelectedNote(null)
+                    navigate({ to: '/sessions/new', search: {} })
+                  }}
+                />
+              ) : (
                 <div className="flex-1 min-h-0">
-                    <Outlet />
+                  <Outlet />
                 </div>
+              )}
             </div>
             </div>
 
