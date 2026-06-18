@@ -490,8 +490,7 @@ function SessionsPage() {
             >
                 <div className="bg-[var(--app-bg)] pt-[env(safe-area-inset-top)]">
                     <div className="mx-auto w-full max-w-content flex items-center justify-between px-3 py-2">
-                        <div className="text-xs text-[var(--app-hint)] flex items-center gap-2">
-                            <span className="rounded bg-[var(--app-link)]/10 px-1.5 py-0.5 text-[10px] text-[var(--app-link)]">Shell</span>
+                        <div className="text-xs text-[var(--app-hint)]">
                             {t('sessions.count', { n: sessions.length, m: projectCount })}
                         </div>
                         <div className="flex items-center gap-2">
@@ -542,7 +541,8 @@ function SessionsPage() {
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                    <line x1="15" y1="3" x2="15" y2="21" />
+                                    <line x1="9" y1="3" x2="9" y2="21" />
+                                    <line x1="15" y1="9" x2="15" y2="15" />
                                 </svg>
                             </button>
                         </div>
