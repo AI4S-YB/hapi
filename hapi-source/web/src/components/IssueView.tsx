@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react'
 
+interface CommentData {
+  author: string
+  body: string
+  createdAt: string
+}
+
 interface IssueData {
   iid: string
   repo: string
@@ -17,6 +23,7 @@ export function IssueView(props: {
   onDiscuss?: () => void
 }) {
   const [issue, setIssue] = useState<IssueData | null>(null)
+  const [comments, setComments] = useState<CommentData[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,6 +31,11 @@ export function IssueView(props: {
       .then(r => { if (!r.ok) throw new Error('Not found'); return r.json() })
       .then(d => { if (d.error) throw new Error(d.error); setIssue(d) })
       .catch(err => setError(err.message))
+
+    fetch(`/shell/issue/comments?repo=${encodeURIComponent(props.repo)}&iid=${encodeURIComponent(props.iid)}`)
+      .then(r => r.json())
+      .then(d => { if (d.comments) setComments(d.comments) })
+      .catch(() => {})
   }, [props.repo, props.iid])
 
   if (error) {
@@ -64,6 +76,27 @@ export function IssueView(props: {
         <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--app-fg)]">
           {issue.description || '(无描述)'}
         </div>
+
+        {comments.length > 0 && (
+          <div className="mt-4 border-t border-[var(--app-border)] pt-3">
+            <div className="mb-2 text-[10px] font-medium text-[var(--app-hint)]">
+              {`评论 (${comments.length})`}
+            </div>
+            {comments.map((c, i) => (
+              <div key={i} className="mb-2 rounded-md bg-[var(--app-subtle-bg)] px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-[var(--app-fg)]">{c.author}</span>
+                  <span className="text-[9px] text-[var(--app-hint)]">
+                    {new Date(c.createdAt).toLocaleDateString('zh-CN')}
+                  </span>
+                </div>
+                <div className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-[var(--app-fg)]">
+                  {c.body}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="shrink-0 border-t border-[var(--app-border)] px-4 py-2.5 flex gap-2">

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { spawnSync } from 'child_process'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 
 const OBSIDIAN_VAULT = `${process.env.HOME || '/tmp'}/Library/Mobile Documents/iCloud~md~obsidian/Documents/ObsidianVault`
 
@@ -108,12 +108,28 @@ export function createSearchRoutes(): Hono {
     }
   })
 
-  // GET /shell/issues — list issues across team repos
+  // GET /shell/issues — cached list across team repos
+  const CACHE_FILE = `${process.env.HOME || '/tmp'}/.hapi-shell/issues-cache.json`
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
   app.get('/shell/issues', async (c) => {
     const q = sanitizeQuery(c.req.query('q') || '')
-    const results: Array<{ iid: string; title: string; state: string; repo: string }> = []
+    const force = c.req.query('force') === '1'
 
-    // Known repos from GITLAB-REPOS.md — search across all
+    // Serve from cache if fresh
+    if (!force && existsSync(CACHE_FILE)) {
+      try {
+        const cache = JSON.parse(readFileSync(CACHE_FILE, 'utf8'))
+        if (Date.now() - cache.ts < CACHE_TTL) {
+          const filtered = q
+            ? cache.issues.filter((i: any) => i.title?.toLowerCase().includes(q.toLowerCase()))
+            : cache.issues
+          return c.json({ issues: filtered.slice(0, 30), cached: true })
+        }
+      } catch { /* corrupt cache, refetch */ }
+    }
+
+    // Fetch fresh data
     const REPOS = [
       'team-wiki/projects/qatask', 'team-wiki/projects/ai-interface',
       'team-wiki/projects/haikou-compute', 'team-wiki/projects/GPUresearch',
@@ -124,6 +140,7 @@ export function createSearchRoutes(): Hono {
       'team-wiki/members/kentnf'
     ]
 
+    const results: Array<{ iid: string; title: string; state: string; repo: string }> = []
     for (const repo of REPOS) {
       try {
         const glab = spawnSync('glab', [
@@ -133,7 +150,6 @@ export function createSearchRoutes(): Hono {
           const data = JSON.parse(new TextDecoder().decode(glab.stdout))
           if (Array.isArray(data)) {
             for (const item of data) {
-              if (q && !item.title?.toLowerCase().includes(q.toLowerCase())) continue
               results.push({
                 iid: String(item.iid || ''),
                 title: item.title || '',
@@ -143,11 +159,42 @@ export function createSearchRoutes(): Hono {
             }
           }
         }
-      } catch { /* repo not found or timeout */ }
+      } catch { /* repo not found */ }
       if (results.length >= 30) break
     }
 
-    return c.json({ issues: results.slice(0, 30) })
+    // Write cache
+    try {
+      writeFileSync(CACHE_FILE, JSON.stringify({ ts: Date.now(), issues: results }), 'utf8')
+    } catch { /* no write permission */ }
+
+    const filtered = q ? results.filter(i => i.title.toLowerCase().includes(q.toLowerCase())) : results
+    return c.json({ issues: filtered.slice(0, 30), cached: false })
+  })
+
+  // GET /shell/issue/comments?repo=...&iid=...
+  app.get('/shell/issue/comments', async (c) => {
+    const repo = c.req.query('repo') || ''
+    const iid = c.req.query('iid') || ''
+    if (!repo || !iid) return c.json({ error: 'Missing params' }, 400)
+    try {
+      const glab = spawnSync('glab', [
+        'api', `projects/${encodeURIComponent(repo)}/issues/${iid}/notes?per_page=20`
+      ], { timeout: 8000 })
+      if (glab.stdout) {
+        const notes = JSON.parse(new TextDecoder().decode(glab.stdout))
+        return c.json({
+          comments: (notes || []).map((n: any) => ({
+            author: n.author?.username || 'unknown',
+            body: n.body || '',
+            createdAt: n.created_at || ''
+          }))
+        })
+      }
+      return c.json({ comments: [] })
+    } catch {
+      return c.json({ comments: [] })
+    }
   })
 
   // GET /shell/obsidian/tree?path=... — directory listing

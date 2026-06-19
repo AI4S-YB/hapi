@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 type SidebarTab = 'sessions' | 'issues' | 'notes'
 
@@ -47,13 +47,14 @@ export function SidebarTabs(props: {
   )
 }
 
-// --- Issues Panel ---
+// --- Issues Panel (grouped by project) ---
 export function IssuesPanel(props: {
   onSelect?: (iid: string, repo: string) => void
 }) {
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<IssueItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [stale, setStale] = useState(false)
 
   useEffect(() => { loadIssues('') }, [])
 
@@ -66,10 +67,33 @@ export function IssuesPanel(props: {
     setLoading(true)
     fetch(`/shell/issues?q=${encodeURIComponent(q.trim())}`)
       .then(r => r.json())
-      .then(d => { if (d.issues) setItems(d.issues) })
+      .then(d => {
+        if (d.issues) {
+          setItems(d.issues)
+          if (d.cached) {
+            setStale(true)
+            // Background refresh
+            fetch('/shell/issues?force=1')
+              .then(r => r.json())
+              .then(fresh => { if (fresh.issues) { setItems(fresh.issues); setStale(false) } })
+              .catch(() => {})
+          }
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }
+
+  // Group by repo
+  const grouped = useMemo(() => {
+    const groups: Record<string, IssueItem[]> = {}
+    for (const item of items) {
+      const short = item.repo.replace('team-wiki/', '').replace('projects/', '')
+      if (!groups[short]) groups[short] = []
+      groups[short].push(item)
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+  }, [items])
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
@@ -85,26 +109,33 @@ export function IssuesPanel(props: {
             className="w-full rounded border border-[var(--app-border)] bg-[var(--app-subtle-bg)] py-1 pl-7 pr-2 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]"
           />
         </div>
+        {stale && (
+          <div className="mt-1 text-[9px] text-[var(--app-hint)]">显示缓存中... 正在刷新</div>
+        )}
       </div>
       <div className="app-scroll-y flex-1 min-h-0">
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
         {!loading && items.length === 0 && (
           <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">
-            {query ? '未找到匹配的 Issue' : '未找到 Issue。请确认 glab 已登录：\nglab auth login'}
+            {query ? '未找到匹配的 Issue' : '未找到 Issue。\n确认 glab 已登录: glab auth login'}
           </div>
         )}
-        {!loading && items.map((item, i) => (
-          <a key={i} href="#" onClick={(e) => { e.preventDefault(); props.onSelect?.(item.iid, item.repo) }}
-            className="block border-b border-[var(--app-border)] px-3 py-2 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
-            <div className="flex items-center gap-2">
-              <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold
-                ${item.state === 'opened' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
-                {`!${item.iid}`}
-              </span>
-              <span className="text-[11px] font-medium text-[var(--app-fg)] truncate">{item.title}</span>
+        {!loading && grouped.map(([repo, repoIssues]) => (
+          <div key={repo}>
+            <div className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-[10px] font-medium text-[var(--app-hint)]">
+              {repo} ({repoIssues.length})
             </div>
-            <div className="mt-0.5 pl-10 text-[9px] text-[var(--app-hint)]">{item.repo}</div>
-          </a>
+            {repoIssues.map((item, i) => (
+              <a key={i} href="#" onClick={(e) => { e.preventDefault(); props.onSelect?.(item.iid, item.repo) }}
+                className="flex items-center gap-2 border-b border-[var(--app-border)] px-3 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
+                <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold
+                  ${item.state === 'opened' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+                  {`!${item.iid}`}
+                </span>
+                <span className="text-[11px] text-[var(--app-fg)] truncate">{item.title}</span>
+              </a>
+            ))}
+          </div>
         ))}
       </div>
     </div>
@@ -139,7 +170,6 @@ export function NotesPanel(props: {
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      {/* Breadcrumb */}
       <div className="shrink-0 border-b border-[var(--app-border)] px-3 py-1.5">
         <div className="flex items-center gap-1 text-[10px] text-[var(--app-hint)]">
           <button onClick={() => loadDir('')} className="hover:text-[var(--app-fg)]">知识库</button>
@@ -149,16 +179,13 @@ export function NotesPanel(props: {
               {i === arr.length - 1 ? (
                 <span className="text-[var(--app-fg)]">{part}</span>
               ) : (
-                <button onClick={() => {
-                  const p = arr.slice(0, i + 1).join('/')
-                  loadDir(p)
-                }} className="hover:text-[var(--app-fg)]">{part}</button>
+                <button onClick={() => loadDir(arr.slice(0, i + 1).join('/'))}
+                  className="hover:text-[var(--app-fg)]">{part}</button>
               )}
             </span>
           ))}
         </div>
       </div>
-      {/* File list */}
       <div className="app-scroll-y flex-1 min-h-0">
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
         {!loading && items.length === 0 && (
