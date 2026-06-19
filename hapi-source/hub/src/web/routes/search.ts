@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { spawnSync } from 'child_process'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 
 const OBSIDIAN_VAULT = `${process.env.HOME || '/tmp'}/Library/Mobile Documents/iCloud~md~obsidian/Documents/ObsidianVault`
 
@@ -105,6 +105,72 @@ export function createSearchRoutes(): Hono {
       })
     } catch {
       return c.json({ error: 'Failed to fetch issue' }, 500)
+    }
+  })
+
+  // GET /shell/issues — list issues across team repos
+  app.get('/shell/issues', async (c) => {
+    const q = sanitizeQuery(c.req.query('q') || '')
+    const results: Array<{ iid: string; title: string; state: string; repo: string }> = []
+
+    // Known repos from GITLAB-REPOS.md — search across all
+    const REPOS = [
+      'team-wiki/projects/qatask', 'team-wiki/projects/ai-interface',
+      'team-wiki/projects/haikou-compute', 'team-wiki/projects/GPUresearch',
+      'team-wiki/projects/lab-compute-resources', 'team-wiki/projects/bioinfo-data-coordination',
+      'team-wiki/projects/horticulture-dataset', 'team-wiki/projects/knowledge-density-paper',
+      'team-wiki/projects/fan-skill-evaluation', 'team-wiki/projects/ai-office',
+      'team-wiki/team-wiki', 'team-wiki/knowledge',
+      'team-wiki/members/kentnf'
+    ]
+
+    for (const repo of REPOS) {
+      try {
+        const glab = spawnSync('glab', [
+          'api', `projects/${encodeURIComponent(repo)}/issues?per_page=5&state=opened&order_by=updated_at`
+        ], { timeout: 5000 })
+        if (glab.stdout) {
+          const data = JSON.parse(new TextDecoder().decode(glab.stdout))
+          if (Array.isArray(data)) {
+            for (const item of data) {
+              if (q && !item.title?.toLowerCase().includes(q.toLowerCase())) continue
+              results.push({
+                iid: String(item.iid || ''),
+                title: item.title || '',
+                state: item.state || 'open',
+                repo
+              })
+            }
+          }
+        }
+      } catch { /* repo not found or timeout */ }
+      if (results.length >= 30) break
+    }
+
+    return c.json({ issues: results.slice(0, 30) })
+  })
+
+  // GET /shell/obsidian/tree?path=... — directory listing
+  app.get('/shell/obsidian/tree', async (c) => {
+    const subPath = c.req.query('path') || ''
+    const dirPath = subPath ? `${OBSIDIAN_VAULT}/${subPath}` : OBSIDIAN_VAULT
+    if (!dirPath.startsWith(OBSIDIAN_VAULT)) {
+      return c.json({ error: 'Invalid path' }, 403)
+    }
+    try {
+      const entries = readdirSync(dirPath, { withFileTypes: true })
+      const dirs: string[] = []
+      const files: string[] = []
+      for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue
+        if (entry.isDirectory()) dirs.push(entry.name)
+        else if (entry.name.endsWith('.md')) files.push(entry.name)
+      }
+      dirs.sort((a, b) => a.localeCompare(b, 'zh'))
+      files.sort((a, b) => a.localeCompare(b, 'zh'))
+      return c.json({ path: subPath, dirs, files })
+    } catch {
+      return c.json({ error: 'Directory not found' }, 404)
     }
   })
 

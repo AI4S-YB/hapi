@@ -2,23 +2,25 @@ import { useState, useEffect } from 'react'
 
 type SidebarTab = 'sessions' | 'issues' | 'notes'
 
-interface SearchItem {
-  source: 'gitlab' | 'obsidian'
+interface IssueItem {
+  iid: string
   title: string
-  subtitle: string
-  iid?: string
-  status?: string
-  path?: string
+  state: string
+  repo: string
 }
 
-interface SidebarTabsProps {
-  activeTab: SidebarTab
-  onTabChange: (tab: SidebarTab) => void
+interface NoteItem {
+  title: string
+  path: string
+  isDir: boolean
 }
 
 export { type SidebarTab }
 
-export function SidebarTabs(props: SidebarTabsProps) {
+export function SidebarTabs(props: {
+  activeTab: SidebarTab
+  onTabChange: (tab: SidebarTab) => void
+}) {
   const tabs: [SidebarTab, string][] = [
     ['sessions', 'Sessions'],
     ['issues', 'Issues'],
@@ -45,34 +47,26 @@ export function SidebarTabs(props: SidebarTabsProps) {
   )
 }
 
+// --- Issues Panel ---
 export function IssuesPanel(props: {
   onSelect?: (iid: string, repo: string) => void
 }) {
   const [query, setQuery] = useState('')
-  const [items, setItems] = useState<SearchItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [items, setItems] = useState<IssueItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => { doSearch('') }, [])
+  useEffect(() => { loadIssues('') }, [])
 
   useEffect(() => {
-    const timer = setTimeout(() => doSearch(query), 300)
+    const timer = setTimeout(() => loadIssues(query), 300)
     return () => clearTimeout(timer)
   }, [query])
 
-  function doSearch(q: string) {
+  function loadIssues(q: string) {
     setLoading(true)
-    const searchQ = q.trim() || '!'
-    fetch(`/shell/search?q=${encodeURIComponent(searchQ)}`)
+    fetch(`/shell/issues?q=${encodeURIComponent(q.trim())}`)
       .then(r => r.json())
-      .then(d => {
-        const issues = (d.gitlab || []).map((r: any) => ({
-          source: 'gitlab' as const,
-          title: `!${r.iid} ${r.title}`,
-          subtitle: r.title,
-          iid: r.iid
-        }))
-        setItems(issues.slice(0, 20))
-      })
+      .then(d => { if (d.issues) setItems(d.issues) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }
@@ -86,9 +80,7 @@ export function IssuesPanel(props: {
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
+            type="text" value={query} onChange={e => setQuery(e.target.value)}
             placeholder="搜索 Issues..."
             className="w-full rounded border border-[var(--app-border)] bg-[var(--app-subtle-bg)] py-1 pl-7 pr-2 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]"
           />
@@ -97,20 +89,21 @@ export function IssuesPanel(props: {
       <div className="app-scroll-y flex-1 min-h-0">
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
         {!loading && items.length === 0 && (
-          <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">未找到 Issues</div>
+          <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">
+            {query ? '未找到匹配的 Issue' : '未找到 Issue。请确认 glab 已登录：\nglab auth login'}
+          </div>
         )}
         {!loading && items.map((item, i) => (
-          <a
-            key={i}
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              props.onSelect?.(item.iid || '', item.subtitle || '')
-            }}
-            className="block border-b border-[var(--app-border)] px-3 py-2.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline"
-          >
-            <div className="text-[11px] font-medium text-[var(--app-fg)]">{item.title}</div>
-            <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">{item.subtitle}</div>
+          <a key={i} href="#" onClick={(e) => { e.preventDefault(); props.onSelect?.(item.iid, item.repo) }}
+            className="block border-b border-[var(--app-border)] px-3 py-2 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
+            <div className="flex items-center gap-2">
+              <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold
+                ${item.state === 'opened' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+                {`!${item.iid}`}
+              </span>
+              <span className="text-[11px] font-medium text-[var(--app-fg)] truncate">{item.title}</span>
+            </div>
+            <div className="mt-0.5 pl-10 text-[9px] text-[var(--app-hint)]">{item.repo}</div>
           </a>
         ))}
       </div>
@@ -118,32 +111,27 @@ export function IssuesPanel(props: {
   )
 }
 
+// --- Notes Panel (tree view) ---
 export function NotesPanel(props: {
   onSelect?: (path: string) => void
 }) {
-  const [query, setQuery] = useState('')
-  const [items, setItems] = useState<SearchItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [items, setItems] = useState<NoteItem[]>([])
+  const [cwd, setCwd] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => { doSearch('') }, [])
+  useEffect(() => { loadDir('') }, [])
 
-  useEffect(() => {
-    const timer = setTimeout(() => doSearch(query), 300)
-    return () => clearTimeout(timer)
-  }, [query])
-
-  function doSearch(q: string) {
+  function loadDir(path: string) {
     setLoading(true)
-    fetch(`/shell/search?q=${encodeURIComponent(q.trim() || '.md')}`)
+    setCwd(path)
+    fetch(`/shell/obsidian/tree?path=${encodeURIComponent(path)}`)
       .then(r => r.json())
       .then(d => {
-        const notes = (d.obsidian || []).map((r: any) => ({
-          source: 'obsidian' as const,
-          title: r.title,
-          subtitle: r.path,
-          path: r.path
-        }))
-        setItems(notes.slice(0, 20))
+        const all: NoteItem[] = [
+          ...(d.dirs || []).map((n: string) => ({ title: n, path: path ? `${path}/${n}` : n, isDir: true })),
+          ...(d.files || []).map((n: string) => ({ title: n, path: path ? `${path}/${n}` : n, isDir: false }))
+        ]
+        setItems(all)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -151,38 +139,43 @@ export function NotesPanel(props: {
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      <div className="shrink-0 border-b border-[var(--app-border)] px-3 py-2">
-        <div className="relative">
-          <svg className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--app-hint)]"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="搜索笔记..."
-            className="w-full rounded border border-[var(--app-border)] bg-[var(--app-subtle-bg)] py-1 pl-7 pr-2 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]"
-          />
+      {/* Breadcrumb */}
+      <div className="shrink-0 border-b border-[var(--app-border)] px-3 py-1.5">
+        <div className="flex items-center gap-1 text-[10px] text-[var(--app-hint)]">
+          <button onClick={() => loadDir('')} className="hover:text-[var(--app-fg)]">知识库</button>
+          {cwd.split('/').filter(Boolean).map((part, i, arr) => (
+            <span key={i}>
+              <span className="mx-0.5">/</span>
+              {i === arr.length - 1 ? (
+                <span className="text-[var(--app-fg)]">{part}</span>
+              ) : (
+                <button onClick={() => {
+                  const p = arr.slice(0, i + 1).join('/')
+                  loadDir(p)
+                }} className="hover:text-[var(--app-fg)]">{part}</button>
+              )}
+            </span>
+          ))}
         </div>
       </div>
+      {/* File list */}
       <div className="app-scroll-y flex-1 min-h-0">
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
         {!loading && items.length === 0 && (
-          <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">未找到笔记</div>
+          <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">空目录</div>
         )}
         {!loading && items.map((item, i) => (
-          <a
-            key={i}
-            href="#"
+          <a key={i} href="#"
             onClick={(e) => {
               e.preventDefault()
-              props.onSelect?.(item.path || '')
+              if (item.isDir) loadDir(item.path)
+              else props.onSelect?.(item.path)
             }}
-            className="block border-b border-[var(--app-border)] px-3 py-2.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline"
-          >
-            <div className="text-[11px] font-medium text-[var(--app-fg)]">{item.title}</div>
-            <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">{item.subtitle}</div>
+            className="flex items-center gap-2 border-b border-[var(--app-border)] px-3 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
+            <span className="shrink-0 text-xs">{item.isDir ? '📁' : '📄'}</span>
+            <span className={`text-[11px] truncate ${item.isDir ? 'font-medium text-[var(--app-fg)]' : 'text-[var(--app-fg)]'}`}>
+              {item.title}
+            </span>
           </a>
         ))}
       </div>
