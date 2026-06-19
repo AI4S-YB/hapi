@@ -9,6 +9,12 @@ interface IssueItem {
   repo: string
 }
 
+interface CommentItem {
+  author: string
+  body: string
+  createdAt: string
+}
+
 interface NoteItem {
   title: string
   path: string
@@ -26,20 +32,14 @@ export function SidebarTabs(props: {
     ['issues', 'Issues'],
     ['notes', '笔记']
   ]
-
   return (
     <div className="flex shrink-0 border-b border-[var(--app-border)]">
       {tabs.map(([key, label]) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => props.onTabChange(key)}
+        <button key={key} type="button" onClick={() => props.onTabChange(key)}
           className={`flex-1 py-2 text-[11px] font-medium transition-colors
             ${props.activeTab === key
               ? 'border-b-2 border-[var(--app-link)] text-[var(--app-link)]'
-              : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'
-            }`}
-        >
+              : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'}`}>
           {label}
         </button>
       ))}
@@ -47,14 +47,23 @@ export function SidebarTabs(props: {
   )
 }
 
-// --- Issues Panel (grouped by project) ---
+// --- Issues Panel (tree: Project → Issue → 主帖 + 评论) ---
+export interface IssueSelect {
+  repo: string
+  iid: string
+  type: 'issue' | 'main' | 'comment'
+  comment?: CommentItem
+}
+
 export function IssuesPanel(props: {
-  onSelect?: (iid: string, repo: string) => void
+  onSelect?: (sel: IssueSelect) => void
 }) {
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<IssueItem[]>([])
   const [loading, setLoading] = useState(true)
   const [stale, setStale] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [comments, setComments] = useState<Record<string, CommentItem[]>>({})
 
   useEffect(() => { loadIssues('') }, [])
 
@@ -72,7 +81,6 @@ export function IssuesPanel(props: {
           setItems(d.issues)
           if (d.cached) {
             setStale(true)
-            // Background refresh
             fetch('/shell/issues?force=1')
               .then(r => r.json())
               .then(fresh => { if (fresh.issues) { setItems(fresh.issues); setStale(false) } })
@@ -84,11 +92,25 @@ export function IssuesPanel(props: {
       .finally(() => setLoading(false))
   }
 
-  // Group by repo
+  function toggleExpand(repo: string, iid: string) {
+    const key = `${repo}/${iid}`
+    if (expanded.has(key)) {
+      setExpanded(prev => { const n = new Set(prev); n.delete(key); return n })
+    } else {
+      setExpanded(prev => new Set(prev).add(key))
+      if (!comments[key]) {
+        fetch(`/shell/issue/comments?repo=${encodeURIComponent(repo)}&iid=${encodeURIComponent(iid)}`)
+          .then(r => r.json())
+          .then(d => { if (d.comments) setComments(prev => ({ ...prev, [key]: d.comments })) })
+          .catch(() => {})
+      }
+    }
+  }
+
   const grouped = useMemo(() => {
     const groups: Record<string, IssueItem[]> = {}
     for (const item of items) {
-      const short = item.repo.replace('team-wiki/', '').replace('projects/', '')
+      const short = item.repo.replace('team-wiki/', '').replace('projects/', '').replace('members/', '')
       if (!groups[short]) groups[short] = []
       groups[short].push(item)
     }
@@ -109,32 +131,70 @@ export function IssuesPanel(props: {
             className="w-full rounded border border-[var(--app-border)] bg-[var(--app-subtle-bg)] py-1 pl-7 pr-2 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]"
           />
         </div>
-        {stale && (
-          <div className="mt-1 text-[9px] text-[var(--app-hint)]">显示缓存中... 正在刷新</div>
-        )}
+        {stale && <div className="mt-1 text-[9px] text-[var(--app-hint)]">显示缓存中... 正在刷新</div>}
       </div>
       <div className="app-scroll-y flex-1 min-h-0">
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
-        {!loading && items.length === 0 && (
-          <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">
-            {query ? '未找到匹配的 Issue' : '未找到 Issue。\n确认 glab 已登录: glab auth login'}
-          </div>
-        )}
         {!loading && grouped.map(([repo, repoIssues]) => (
           <div key={repo}>
             <div className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-[10px] font-medium text-[var(--app-hint)]">
               {repo} ({repoIssues.length})
             </div>
-            {repoIssues.map((item, i) => (
-              <a key={i} href="#" onClick={(e) => { e.preventDefault(); props.onSelect?.(item.iid, item.repo) }}
-                className="flex items-center gap-2 border-b border-[var(--app-border)] px-3 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
-                <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold
-                  ${item.state === 'opened' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
-                  {`!${item.iid}`}
-                </span>
-                <span className="text-[11px] text-[var(--app-fg)] truncate">{item.title}</span>
-              </a>
-            ))}
+            {repoIssues.map((item) => {
+              const key = `${item.repo}/${item.iid}`
+              const isExpanded = expanded.has(key)
+              const threadComments = comments[key] || []
+              return (
+                <div key={key} className={`${isExpanded ? 'bg-[var(--app-subtle-bg)]/30' : ''}`}>
+                  {/* Issue row */}
+                  <a href="#" onClick={(e) => { e.preventDefault(); toggleExpand(item.repo, item.iid) }}
+                    className="flex items-center gap-1.5 border-b border-[var(--app-border)] px-2 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
+                    <span className="shrink-0 w-3 text-center text-[8px] text-[var(--app-hint)]">
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
+                    <span className={`shrink-0 rounded px-1 py-0.5 text-[8px] font-semibold
+                      ${item.state === 'opened' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
+                      {`!${item.iid}`}
+                    </span>
+                    <span className="text-[10px] text-[var(--app-fg)] truncate flex-1">{item.title}</span>
+                    {threadComments.length > 0 && (
+                      <span className="shrink-0 text-[9px] text-[var(--app-hint)]">{threadComments.length}</span>
+                    )}
+                  </a>
+                  {/* Expanded thread */}
+                  {isExpanded && (
+                    <>
+                      <a href="#" onClick={(e) => {
+                        e.preventDefault()
+                        props.onSelect?.({ repo: item.repo, iid: item.iid, type: 'main' })
+                      }} className="flex items-center gap-1.5 border-b border-[var(--app-border)] py-1 pl-8 pr-2 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
+                        <span className="shrink-0 text-[9px]">📝</span>
+                        <span className="text-[10px] text-[var(--app-fg)] truncate flex-1">主帖</span>
+                        <span className="shrink-0 text-[9px] text-[var(--app-hint)]">详情</span>
+                      </a>
+                      {threadComments.length === 0 && (
+                        <div className="py-1 pl-8 pr-2 text-[9px] text-[var(--app-hint)]">加载中...</div>
+                      )}
+                      {threadComments.map((c, ci) => (
+                        <a key={ci} href="#" onClick={(e) => {
+                          e.preventDefault()
+                          props.onSelect?.({ repo: item.repo, iid: item.iid, type: 'comment', comment: c })
+                        }} className="flex items-center gap-1.5 border-b border-[var(--app-border)] py-1 pl-8 pr-2 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
+                          <span className="shrink-0 text-[9px]">💬</span>
+                          <span className="text-[10px] text-[var(--app-fg)] truncate flex-1">
+                            <span className="text-[var(--app-link)]">{c.author}</span>
+                            <span className="text-[var(--app-hint)]"> · {(c.body || '').slice(0, 40)}</span>
+                          </span>
+                          <span className="shrink-0 text-[8px] text-[var(--app-hint)]">
+                            {new Date(c.createdAt).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
+                          </span>
+                        </a>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )
+            })}
           </div>
         ))}
       </div>
@@ -158,11 +218,10 @@ export function NotesPanel(props: {
     fetch(`/shell/obsidian/tree?path=${encodeURIComponent(path)}`)
       .then(r => r.json())
       .then(d => {
-        const all: NoteItem[] = [
+        setItems([
           ...(d.dirs || []).map((n: string) => ({ title: n, path: path ? `${path}/${n}` : n, isDir: true })),
           ...(d.files || []).map((n: string) => ({ title: n, path: path ? `${path}/${n}` : n, isDir: false }))
-        ]
-        setItems(all)
+        ])
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -188,17 +247,13 @@ export function NotesPanel(props: {
       </div>
       <div className="app-scroll-y flex-1 min-h-0">
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
-        {!loading && items.length === 0 && (
-          <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">空目录</div>
-        )}
         {!loading && items.map((item, i) => (
-          <a key={i} href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              if (item.isDir) loadDir(item.path)
-              else props.onSelect?.(item.path)
-            }}
-            className="flex items-center gap-2 border-b border-[var(--app-border)] px-3 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
+          <a key={i} href="#" onClick={(e) => {
+            e.preventDefault()
+            if (item.isDir) loadDir(item.path)
+            else props.onSelect?.(item.path)
+          }}
+          className="flex items-center gap-2 border-b border-[var(--app-border)] px-3 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
             <span className="shrink-0 text-xs">{item.isDir ? '📁' : '📄'}</span>
             <span className={`text-[11px] truncate ${item.isDir ? 'font-medium text-[var(--app-fg)]' : 'text-[var(--app-fg)]'}`}>
               {item.title}

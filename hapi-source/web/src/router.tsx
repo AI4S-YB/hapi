@@ -41,7 +41,7 @@ import { inactiveSessionCanResume } from '@/lib/sessionResume'
 import { markSessionSeen } from '@/lib/sessionLastSeen'
 import { clearCodexImportedSession, markCodexSessionsImported } from '@/lib/codexImportedSessions'
 import type { Machine, CodexDuplicateSessionGroup, CodexLocalSessionSummary } from '@/types/api'
-import { SidebarTabs, IssuesPanel, NotesPanel, type SidebarTab } from '@/components/SidebarTabs'
+import { SidebarTabs, IssuesPanel, NotesPanel, type SidebarTab, type IssueSelect } from '@/components/SidebarTabs'
 import { SetupWizard } from '@/components/SetupWizard'
 import { IssueView } from '@/components/IssueView'
 import { NoteView } from '@/components/NoteView'
@@ -175,7 +175,7 @@ function SessionsPage() {
     const [isDuplicateMergeConfirmOpen, setIsDuplicateMergeConfirmOpen] = useState(false)
     const [isMergingDuplicateSessions, setIsMergingDuplicateSessions] = useState(false)
     const [activeTab, setActiveTab] = useState<SidebarTab>('sessions')
-    const [selectedIssue, setSelectedIssue] = useState<{ iid: string; repo: string } | null>(null)
+    const [selectedIssue, setSelectedIssue] = useState<IssueSelect | null>(null)
     const [selectedNote, setSelectedNote] = useState<{ path: string } | null>(null)
     const [showSetup, setShowSetup] = useState(false)
 
@@ -578,9 +578,9 @@ function SessionsPage() {
                         </>
                     )}
                     {activeTab === 'issues' && (
-                      <IssuesPanel onSelect={(iid, repo) => {
+                      <IssuesPanel onSelect={(sel) => {
                         setSelectedNote(null)
-                        setSelectedIssue({ iid, repo })
+                        setSelectedIssue(sel)
                       }} />
                     )}
                     {activeTab === 'notes' && (
@@ -602,6 +602,23 @@ function SessionsPage() {
             <div className="min-w-0 flex-1 flex-col bg-[var(--app-bg)]"
               style={{ display: isSessionsIndex && !selectedIssue && !selectedNote ? 'none' : 'flex' }}>
               {selectedIssue ? (
+                selectedIssue.type === 'comment' && selectedIssue.comment ? (
+                  <div className="flex h-full min-h-0 flex-col">
+                    <div className="shrink-0 border-b border-[var(--app-border)] px-4 py-3">
+                      <span className="text-[10px] text-[var(--app-link)]">
+                        {`💬 ${selectedIssue.comment.author} · !${selectedIssue.iid}`}
+                      </span>
+                      <span className="ml-2 text-[9px] text-[var(--app-hint)]">
+                        {new Date(selectedIssue.comment.createdAt).toLocaleDateString('zh-CN')}
+                      </span>
+                    </div>
+                    <div className="app-scroll-y flex-1 min-h-0 px-4 py-3">
+                      <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--app-fg)]">
+                        {selectedIssue.comment.body}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                 <IssueView
                   repo={selectedIssue.repo}
                   iid={selectedIssue.iid}
@@ -611,7 +628,7 @@ function SessionsPage() {
                     navigate({ to: '/sessions/new', search: {} })
                   }}
                 />
-              ) : selectedNote ? (
+                )) : selectedNote ? (
                 <NoteView
                   notePath={selectedNote.path}
                   onDiscuss={() => {
