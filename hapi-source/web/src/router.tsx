@@ -578,10 +578,16 @@ function SessionsPage() {
                         </>
                     )}
                     {activeTab === 'issues' && (
-                      <IssuesPanel onSelect={(iid, repo) => setSelectedIssue({ iid, repo })} />
+                      <IssuesPanel onSelect={(iid, repo) => {
+                        setSelectedNote(null)
+                        setSelectedIssue({ iid, repo })
+                      }} />
                     )}
                     {activeTab === 'notes' && (
-                      <NotesPanel onSelect={(path) => setSelectedNote({ path })} />
+                      <NotesPanel onSelect={(path) => {
+                        setSelectedIssue(null)
+                        setSelectedNote({ path })
+                      }} />
                     )}
                 </div>
             </div>

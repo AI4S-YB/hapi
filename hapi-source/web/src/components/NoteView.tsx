@@ -60,20 +60,20 @@ export function NoteView(props: {
       </div>
 
       <div className="shrink-0 border-t border-[var(--app-border)] px-4 py-2.5 flex gap-2">
-        {props.onDiscuss && (
-          <button onClick={props.onDiscuss}
-            className="flex-1 rounded-md bg-[var(--app-link)] px-4 py-1.5 text-[11px] font-medium text-white
-                       transition-opacity hover:opacity-90">
-            讨论这篇笔记
-          </button>
-        )}
         <a
           href={`http://${window.location.hostname}:8686/note?path=${encodeURIComponent(note.path)}`}
           target="_blank" rel="noopener noreferrer"
-          className="rounded-md border border-[var(--app-border)] px-3 py-1.5 text-[11px] text-[var(--app-hint)]
+          className="flex-1 rounded-md border border-[var(--app-border)] px-4 py-1.5 text-center text-[11px] text-[var(--app-fg)]
                      no-underline transition-colors hover:bg-[var(--app-subtle-bg)]">
-          Obsidian ↗
+          Obsidian 打开 ↗
         </a>
+        {props.onDiscuss && (
+          <button onClick={props.onDiscuss}
+            className="rounded-md bg-[var(--app-link)] px-3 py-1.5 text-[11px] font-medium text-white
+                       transition-opacity hover:opacity-90">
+            讨论
+          </button>
+        )}
       </div>
     </div>
   )
