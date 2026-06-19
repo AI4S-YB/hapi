@@ -641,4 +641,8 @@ export default {
   'misc.permissionRequired': 'permission required',
   'misc.percentLeft': '{percent}% left',
   'misc.online': 'online',
+
+  // Navigation tabs (HAPI Shell)
+  'nav.issues': 'Issues',
+  'nav.knowledge': 'Knowledge',
 } as const

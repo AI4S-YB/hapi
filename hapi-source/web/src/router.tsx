@@ -503,7 +503,12 @@ function SessionsPage() {
             >
                 {/* Tab bar */}
                 <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab}
-                  onSettings={() => navigate({ to: '/settings' })} />
+                  onSettings={() => navigate({ to: '/settings' })}
+                  labels={{
+                    sessions: 'Sessions',
+                    issues: t('nav.issues'),
+                    notes: t('nav.knowledge')
+                  }} />
 
                 {/* Sessions tab header */}
                 {activeTab === 'sessions' && (

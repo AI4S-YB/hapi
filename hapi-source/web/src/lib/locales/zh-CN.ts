@@ -645,4 +645,8 @@ export default {
   'misc.permissionRequired': '需要权限',
   'misc.percentLeft': '剩余 {percent}%',
   'misc.online': '在线',
+
+  // Navigation tabs (HAPI Shell)
+  'nav.issues': '议题',
+  'nav.knowledge': '知识库',
 } as const

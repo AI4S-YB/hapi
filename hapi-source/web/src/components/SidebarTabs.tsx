@@ -27,11 +27,13 @@ export function SidebarTabs(props: {
   activeTab: SidebarTab
   onTabChange: (tab: SidebarTab) => void
   onSettings?: () => void
+  labels?: { sessions: string; issues: string; notes: string }
 }) {
+  const lb = props.labels || { sessions: 'Sessions', issues: 'Issues', notes: 'Knowledge' }
   const tabs: [SidebarTab, string][] = [
-    ['sessions', 'Sessions'],
-    ['issues', '议题'],
-    ['notes', '知识库']
+    ['sessions', lb.sessions],
+    ['issues', lb.issues],
+    ['notes', lb.notes]
   ]
   return (
     <div className="flex shrink-0 items-center border-b border-[var(--app-border)]">
