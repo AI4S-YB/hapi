@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { MdView } from '@/components/MdView'
 
 interface CommentData {
   author: string
@@ -73,9 +74,7 @@ export function IssueView(props: {
       </div>
 
       <div className="app-scroll-y flex-1 min-h-0 px-4 py-3">
-        <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--app-fg)]">
-          {issue.description || '(无描述)'}
-        </div>
+        <MdView content={issue.description || '(无描述)'} />
 
         {comments.length > 0 && (
           <div className="mt-4 border-t border-[var(--app-border)] pt-3">
@@ -90,8 +89,8 @@ export function IssueView(props: {
                     {new Date(c.createdAt).toLocaleDateString('zh-CN')}
                   </span>
                 </div>
-                <div className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-[var(--app-fg)]">
-                  {c.body}
+                <div className="mt-1">
+                  <MdView content={c.body} />
                 </div>
               </div>
             ))}

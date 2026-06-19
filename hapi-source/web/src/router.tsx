@@ -45,6 +45,7 @@ import { SidebarTabs, IssuesPanel, NotesPanel, type SidebarTab, type IssueSelect
 import { SetupWizard } from '@/components/SetupWizard'
 import { IssueView } from '@/components/IssueView'
 import { NoteView } from '@/components/NoteView'
+import { MdView } from '@/components/MdView'
 import FilesPage from '@/routes/sessions/files'
 import FilePage from '@/routes/sessions/file'
 import TerminalPage from '@/routes/sessions/terminal'
@@ -613,9 +614,7 @@ function SessionsPage() {
                       </span>
                     </div>
                     <div className="app-scroll-y flex-1 min-h-0 px-4 py-3">
-                      <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--app-fg)]">
-                        {selectedIssue.comment.body}
-                      </div>
+                      <MdView content={selectedIssue.comment.body} />
                     </div>
                   </div>
                 ) : (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { MdView } from '@/components/MdView'
 
 interface NoteData {
   path: string
@@ -54,9 +55,7 @@ export function NoteView(props: {
       </div>
 
       <div className="app-scroll-y flex-1 min-h-0 px-4 py-3">
-        <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--app-fg)]">
-          {note.content}
-        </div>
+        <MdView content={note.content} />
       </div>
 
       <div className="shrink-0 border-t border-[var(--app-border)] px-4 py-2.5 flex gap-2">
