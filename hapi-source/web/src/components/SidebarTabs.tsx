@@ -39,7 +39,7 @@ export function SidebarTabs(props: {
     <div className="flex shrink-0 items-center border-b border-[var(--app-border)]">
       {tabs.map(([key, label]) => (
         <button key={key} type="button" onClick={() => props.onTabChange(key)}
-          className={`flex-1 py-2 text-[11px] font-medium transition-colors
+          className={`flex-1 py-2 text-xs font-medium transition-colors
             ${props.activeTab === key
               ? 'border-b-2 border-[var(--app-link)] text-[var(--app-link)]'
               : 'text-[var(--app-hint)] hover:text-[var(--app-fg)]'}`}>
