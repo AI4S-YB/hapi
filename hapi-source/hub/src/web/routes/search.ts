@@ -129,39 +129,30 @@ export function createSearchRoutes(): Hono {
       } catch { /* corrupt cache, refetch */ }
     }
 
-    // Fetch fresh data
-    const REPOS = [
-      'team-wiki/projects/qatask', 'team-wiki/projects/ai-interface',
-      'team-wiki/projects/haikou-compute', 'team-wiki/projects/GPUresearch',
-      'team-wiki/projects/lab-compute-resources', 'team-wiki/projects/bioinfo-data-coordination',
-      'team-wiki/projects/horticulture-dataset', 'team-wiki/projects/knowledge-density-paper',
-      'team-wiki/projects/fan-skill-evaluation', 'team-wiki/projects/ai-office',
-      'team-wiki/team-wiki', 'team-wiki/knowledge',
-      'team-wiki/members/kentnf'
-    ]
-
+    // Fetch fresh via group API (one call instead of 13)
     const results: Array<{ iid: string; title: string; state: string; repo: string }> = []
-    for (const repo of REPOS) {
-      try {
-        const glab = spawnSync('glab', [
-          'api', `projects/${encodeURIComponent(repo)}/issues?per_page=5&state=opened&order_by=updated_at`
-        ], { timeout: 5000 })
-        if (glab.stdout) {
-          const data = JSON.parse(new TextDecoder().decode(glab.stdout))
-          if (Array.isArray(data)) {
-            for (const item of data) {
-              results.push({
-                iid: String(item.iid || ''),
-                title: item.title || '',
-                state: item.state || 'open',
-                repo
-              })
-            }
+    try {
+      const glab = spawnSync('glab', [
+        'api', 'groups/team-wiki/issues?per_page=50&state=opened&order_by=updated_at'
+      ], { timeout: 10000 })
+      if (glab.stdout) {
+        const data = JSON.parse(new TextDecoder().decode(glab.stdout))
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            // Extract repo from web_url: .../team-wiki/projects/qatask/-/issues/8
+            const webUrl: string = item.web_url || ''
+            const repoMatch = webUrl.match(/team-wiki\/(?:projects|members|knowledge)\/[^/]+/)
+            const repo = repoMatch ? repoMatch[0] : 'team-wiki'
+            results.push({
+              iid: String(item.iid || ''),
+              title: item.title || '',
+              state: item.state || 'open',
+              repo
+            })
           }
         }
-      } catch { /* repo not found */ }
-      if (results.length >= 30) break
-    }
+      }
+    } catch { /* group API failed */ }
 
     // Write cache
     try {
