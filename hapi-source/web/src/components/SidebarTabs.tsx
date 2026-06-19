@@ -48,7 +48,7 @@ export function SidebarTabs(props: {
       ))}
       {props.onSettings && (
         <button type="button" onClick={props.onSettings}
-          className="shrink-0 px-3 py-2 text-[11px] text-[var(--app-hint)] hover:text-[var(--app-fg)] transition-colors border-l border-[var(--app-border)]"
+          className="shrink-0 px-3 py-2 text-xs text-[var(--app-hint)] hover:text-[var(--app-fg)] transition-colors border-l border-[var(--app-border)]"
           title="设置">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -141,16 +141,16 @@ export function IssuesPanel(props: {
           <input
             type="text" value={query} onChange={e => setQuery(e.target.value)}
             placeholder="搜索 Issues..."
-            className="w-full rounded border border-[var(--app-border)] bg-[var(--app-subtle-bg)] py-1 pl-7 pr-2 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]"
+            className="w-full rounded border border-[var(--app-border)] bg-[var(--app-subtle-bg)] py-1 pl-7 pr-2 text-xs text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]"
           />
         </div>
-        {stale && <div className="mt-1 text-[9px] text-[var(--app-hint)]">显示缓存中... 正在刷新</div>}
+        {stale && <div className="mt-1 text-[11px] text-[var(--app-hint)]">显示缓存中... 正在刷新</div>}
       </div>
       <div className="app-scroll-y flex-1 min-h-0">
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
         {!loading && grouped.map(([repo, repoIssues]) => (
           <div key={repo}>
-            <div className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-[10px] font-medium text-[var(--app-hint)]">
+            <div className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-xs font-medium text-[var(--app-hint)]">
               {repo} ({repoIssues.length})
             </div>
             {repoIssues.map((item) => {
@@ -162,16 +162,16 @@ export function IssuesPanel(props: {
                   {/* Issue row */}
                   <a href="#" onClick={(e) => { e.preventDefault(); toggleExpand(item.repo, item.iid) }}
                     className="flex items-center gap-1.5 border-b border-[var(--app-border)] px-2 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
-                    <span className="shrink-0 w-3 text-center text-[8px] text-[var(--app-hint)]">
+                    <span className="shrink-0 w-3 text-center text-[10px] text-[var(--app-hint)]">
                       {isExpanded ? '▼' : '▶'}
                     </span>
-                    <span className={`shrink-0 rounded px-1 py-0.5 text-[8px] font-semibold
+                    <span className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-semibold
                       ${item.state === 'opened' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-border)] text-[var(--app-hint)]'}`}>
                       {`!${item.iid}`}
                     </span>
-                    <span className="text-[10px] text-[var(--app-fg)] truncate flex-1">{item.title}</span>
+                    <span className="text-xs text-[var(--app-fg)] truncate flex-1">{item.title}</span>
                     {threadComments.length > 0 && (
-                      <span className="shrink-0 text-[9px] text-[var(--app-hint)]">{threadComments.length}</span>
+                      <span className="shrink-0 text-[11px] text-[var(--app-hint)]">{threadComments.length}</span>
                     )}
                   </a>
                   {/* Expanded thread */}
@@ -181,24 +181,24 @@ export function IssuesPanel(props: {
                         e.preventDefault()
                         props.onSelect?.({ repo: item.repo, iid: item.iid, type: 'main' })
                       }} className="flex items-center gap-1.5 border-b border-[var(--app-border)] py-1 pl-8 pr-2 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
-                        <span className="shrink-0 text-[9px]">📝</span>
-                        <span className="text-[10px] text-[var(--app-fg)] truncate flex-1">主帖</span>
-                        <span className="shrink-0 text-[9px] text-[var(--app-hint)]">详情</span>
+                        <span className="shrink-0 text-[11px]">📝</span>
+                        <span className="text-xs text-[var(--app-fg)] truncate flex-1">主帖</span>
+                        <span className="shrink-0 text-[11px] text-[var(--app-hint)]">详情</span>
                       </a>
                       {threadComments.length === 0 && (
-                        <div className="py-1 pl-8 pr-2 text-[9px] text-[var(--app-hint)]">加载中...</div>
+                        <div className="py-1 pl-8 pr-2 text-[11px] text-[var(--app-hint)]">加载中...</div>
                       )}
                       {threadComments.map((c, ci) => (
                         <a key={ci} href="#" onClick={(e) => {
                           e.preventDefault()
                           props.onSelect?.({ repo: item.repo, iid: item.iid, type: 'comment', comment: c })
                         }} className="flex items-center gap-1.5 border-b border-[var(--app-border)] py-1 pl-8 pr-2 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
-                          <span className="shrink-0 text-[9px]">💬</span>
-                          <span className="text-[10px] text-[var(--app-fg)] truncate flex-1">
+                          <span className="shrink-0 text-[11px]">💬</span>
+                          <span className="text-xs text-[var(--app-fg)] truncate flex-1">
                             <span className="text-[var(--app-link)]">{c.author}</span>
                             <span className="text-[var(--app-hint)]"> · {(c.body || '').slice(0, 40)}</span>
                           </span>
-                          <span className="shrink-0 text-[8px] text-[var(--app-hint)]">
+                          <span className="shrink-0 text-[10px] text-[var(--app-hint)]">
                             {new Date(c.createdAt).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
                           </span>
                         </a>
@@ -243,7 +243,7 @@ export function NotesPanel(props: {
   return (
     <div className="flex flex-col min-h-0 flex-1">
       <div className="shrink-0 border-b border-[var(--app-border)] px-3 py-1.5">
-        <div className="flex items-center gap-1 text-[10px] text-[var(--app-hint)]">
+        <div className="flex items-center gap-1 text-xs text-[var(--app-hint)]">
           <button onClick={() => loadDir('')} className="hover:text-[var(--app-fg)]">知识库</button>
           {cwd.split('/').filter(Boolean).map((part, i, arr) => (
             <span key={i}>
@@ -268,7 +268,7 @@ export function NotesPanel(props: {
           }}
           className="flex items-center gap-2 border-b border-[var(--app-border)] px-3 py-1.5 transition-colors hover:bg-[var(--app-subtle-bg)] no-underline">
             <span className="shrink-0 text-xs">{item.isDir ? '📁' : '📄'}</span>
-            <span className={`text-[11px] truncate ${item.isDir ? 'font-medium text-[var(--app-fg)]' : 'text-[var(--app-fg)]'}`}>
+            <span className={`text-xs truncate ${item.isDir ? 'font-medium text-[var(--app-fg)]' : 'text-[var(--app-fg)]'}`}>
               {item.title}
             </span>
           </a>
