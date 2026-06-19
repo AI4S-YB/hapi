@@ -131,7 +131,7 @@ export function IssuesPanel(props: {
   }, [items])
 
   return (
-    <div className="flex flex-col min-h-0 flex-1">
+    <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 border-b border-[var(--app-border)] px-3 py-2">
         <div className="relative">
           <svg className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--app-hint)]"
@@ -146,7 +146,7 @@ export function IssuesPanel(props: {
         </div>
         {stale && <div className="mt-1 text-[11px] text-[var(--app-hint)]">显示缓存中... 正在刷新</div>}
       </div>
-      <div className="app-scroll-y flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
         {!loading && grouped.map(([repo, repoIssues]) => (
           <div key={repo}>
@@ -241,7 +241,7 @@ export function NotesPanel(props: {
   }
 
   return (
-    <div className="flex flex-col min-h-0 flex-1">
+    <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 border-b border-[var(--app-border)] px-3 py-1.5">
         <div className="flex items-center gap-1 text-xs text-[var(--app-hint)]">
           <button onClick={() => loadDir('')} className="hover:text-[var(--app-fg)]">知识库</button>
@@ -258,7 +258,7 @@ export function NotesPanel(props: {
           ))}
         </div>
       </div>
-      <div className="app-scroll-y flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
         {loading && <div className="px-3 py-8 text-center text-[11px] text-[var(--app-hint)]">加载中...</div>}
         {!loading && items.map((item, i) => (
           <a key={i} href="#" onClick={(e) => {
