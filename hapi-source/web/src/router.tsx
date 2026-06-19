@@ -502,7 +502,8 @@ function SessionsPage() {
                 style={{ '--sidebar-w': `${sidebar.width}px` } as React.CSSProperties}
             >
                 {/* Tab bar */}
-                <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab} />
+                <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab}
+                  onSettings={() => navigate({ to: '/settings' })} />
 
                 {/* Sessions tab header */}
                 {activeTab === 'sessions' && (
@@ -530,14 +531,6 @@ function SessionsPage() {
                                 title={t('browse.nav')}
                             >
                                 <FolderOpenIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => navigate({ to: '/settings' })}
-                                className="p-1.5 rounded-full text-[var(--app-hint)] hover:text-[var(--app-fg)] hover:bg-[var(--app-subtle-bg)] transition-colors"
-                                title={t('settings.title')}
-                            >
-                                <SettingsIcon className="h-5 w-5" />
                             </button>
                             <button
                                 type="button"
