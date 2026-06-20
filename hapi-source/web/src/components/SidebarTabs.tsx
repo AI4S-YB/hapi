@@ -28,13 +28,16 @@ export function SidebarTabs(props: {
   onTabChange: (tab: SidebarTab) => void
   onSettings?: () => void
   labels?: { sessions: string; issues: string; notes: string }
+  enabled?: { issues?: boolean; notes?: boolean }
 }) {
   const lb = props.labels || { sessions: 'Sessions', issues: 'Issues', notes: 'Knowledge' }
-  const tabs: [SidebarTab, string][] = [
-    ['sessions', lb.sessions],
-    ['issues', lb.issues],
-    ['notes', lb.notes]
+  const en = props.enabled || {}
+  const allTabs: [SidebarTab, string, boolean][] = [
+    ['sessions', lb.sessions, true],
+    ['issues', lb.issues, en.issues !== false],
+    ['notes', lb.notes, en.notes !== false]
   ]
+  const tabs = allTabs.filter(([, , visible]) => visible)
   return (
     <div className="flex shrink-0 items-center border-b border-[var(--app-border)]">
       {tabs.map(([key, label]) => (

@@ -176,6 +176,22 @@ function SessionsPage() {
     const [isDuplicateMergeConfirmOpen, setIsDuplicateMergeConfirmOpen] = useState(false)
     const [isMergingDuplicateSessions, setIsMergingDuplicateSessions] = useState(false)
     const [activeTab, setActiveTab] = useState<SidebarTab>('sessions')
+    const [tabEnabled, setTabEnabled] = useState<{ issues?: boolean; notes?: boolean }>({})
+
+    // Load resource config for tab visibility
+    useEffect(() => {
+      fetch('/shell/config')
+        .then(r => r.json())
+        .then(d => {
+          if (d.configured) {
+            setTabEnabled({
+              issues: d.gitlab?.enabled !== false,
+              notes: d.obsidian?.enabled !== false
+            })
+          }
+        })
+        .catch(() => {})
+    }, [])
     const [selectedIssue, setSelectedIssue] = useState<IssueSelect | null>(null)
     const [selectedNote, setSelectedNote] = useState<{ path: string } | null>(null)
     const [showSetup, setShowSetup] = useState(false)
@@ -504,6 +520,7 @@ function SessionsPage() {
                 {/* Tab bar */}
                 <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab}
                   onSettings={() => navigate({ to: '/settings' })}
+                  enabled={tabEnabled}
                   labels={{
                     sessions: 'Sessions',
                     issues: t('nav.issues'),

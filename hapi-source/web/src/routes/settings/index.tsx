@@ -37,6 +37,7 @@ import {
 import { useAppearance, getAppearanceOptions, type AppearancePreference } from '@/hooks/useTheme'
 import { PROTOCOL_VERSION } from '@hapi/protocol'
 import { VoiceRespondsControls, VoiceSoundsControls, VoicePersonaControls, VoiceDiagnosticsControls } from '@/components/settings/VoiceAdvancedControls'
+import { ResourceSettings } from '@/components/settings/ResourceSettings'
 
 const locales: { value: Locale; nativeLabel: string }[] = [
     { value: 'en', nativeLabel: 'English' },
@@ -1176,6 +1177,9 @@ export default function SettingsPage() {
                             <VoiceDiagnosticsControls t={t} voiceBackend={voiceBackend} />
                         </div>
                     </div>
+
+                    {/* Resources section (HAPI Shell) */}
+                    <ResourceSettings />
 
                     {/* About section */}
                     <div className="border-b border-[var(--app-divider)]">
