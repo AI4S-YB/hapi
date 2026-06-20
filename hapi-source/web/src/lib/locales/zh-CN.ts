@@ -649,4 +649,26 @@ export default {
   // Navigation tabs (HAPI Shell)
   'nav.issues': '议题',
   'nav.knowledge': '知识库',
+
+  // Settings - Resources (HAPI Shell)
+  'settings.resources.issues': '议题',
+  'settings.resources.knowledge': '知识库',
+  'settings.resources.compute': '计算资源',
+  'settings.resources.connected': '已连接',
+  'settings.resources.connectFailed': '连接失败',
+  'settings.resources.detected': '已检测',
+  'settings.resources.gitProvider': 'Git 服务',
+  'settings.resources.gitTestFail': '无法获取 Issues。检查地址和 Token',
+  'settings.resources.testConn': '测试连接',
+  'settings.resources.testing': '测试中...',
+  'settings.resources.issuesHint': '支持 GitLab 和 GitHub。关闭开关可隐藏「议题」Tab。',
+  'settings.resources.vaultPath': 'Vault 路径',
+  'settings.resources.browse': '浏览...',
+  'settings.resources.pathValid': '路径有效',
+  'settings.resources.pathInvalid': '路径无效',
+  'settings.resources.knowledgeHint': 'Obsidian Vault 路径。关闭开关可隐藏「知识库」Tab。',
+  'settings.resources.save': '保存资源设置',
+  'settings.resources.saveHint': '关闭资源开关后，对应 Tab 将在刷新后隐藏',
+  'settings.resources.show': '显示',
+  'settings.resources.hide': '隐藏',
 } as const

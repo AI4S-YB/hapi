@@ -645,4 +645,26 @@ export default {
   // Navigation tabs (HAPI Shell)
   'nav.issues': 'Issues',
   'nav.knowledge': 'Knowledge',
+
+  // Settings - Resources (HAPI Shell)
+  'settings.resources.issues': 'Issues',
+  'settings.resources.knowledge': 'Knowledge',
+  'settings.resources.compute': 'Compute',
+  'settings.resources.connected': 'Connected',
+  'settings.resources.connectFailed': 'Connection failed',
+  'settings.resources.detected': 'Detected',
+  'settings.resources.gitProvider': 'Git Provider',
+  'settings.resources.gitTestFail': 'Failed to fetch issues. Check URL and token.',
+  'settings.resources.testConn': 'Test',
+  'settings.resources.testing': 'Testing...',
+  'settings.resources.issuesHint': 'Supports GitLab and GitHub. Disable to hide Issues tab.',
+  'settings.resources.vaultPath': 'Vault Path',
+  'settings.resources.browse': 'Browse...',
+  'settings.resources.pathValid': 'Path valid',
+  'settings.resources.pathInvalid': 'Path invalid',
+  'settings.resources.knowledgeHint': 'Obsidian vault path. Disable to hide Knowledge tab.',
+  'settings.resources.save': 'Save Resources',
+  'settings.resources.saveHint': 'Tab changes apply after page reload',
+  'settings.resources.show': 'Show',
+  'settings.resources.hide': 'Hide',
 } as const
