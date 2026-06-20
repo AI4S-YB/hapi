@@ -207,6 +207,29 @@ export function createSetupRoutes(): Hono {
     return c.json(result)
   })
 
+  // --- Compute resource management ---
+  const COMPUTE_PATH = `${CONFIG_DIR}/compute.json`
+
+  app.get('/shell/compute', async (c) => {
+    if (!existsSync(COMPUTE_PATH)) return c.json({ machines: [] })
+    try {
+      return c.json(JSON.parse(readFileSync(COMPUTE_PATH, 'utf8')))
+    } catch {
+      return c.json({ machines: [] })
+    }
+  })
+
+  app.post('/shell/compute/save', async (c) => {
+    try {
+      const body = await c.req.json()
+      if (!existsSync(CONFIG_DIR)) mkdirSync(CONFIG_DIR, { recursive: true })
+      writeFileSync(COMPUTE_PATH, JSON.stringify(body, null, 2), 'utf8')
+      return c.json({ success: true })
+    } catch (err) {
+      return c.json({ success: false, error: err instanceof Error ? err.message : 'Save failed' }, 500)
+    }
+  })
+
   // Save confirmed config
   app.post('/shell/setup/save', async (c) => {
     try {

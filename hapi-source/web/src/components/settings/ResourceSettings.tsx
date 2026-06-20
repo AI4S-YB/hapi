@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from '@/lib/use-translation'
+import { ComputeDialog, type MachineConfig } from '@/components/settings/ComputeDialog'
 
 export function ResourceSettings() {
   const { t } = useTranslation()
@@ -15,8 +16,9 @@ export function ResourceSettings() {
   const [obsidianEnabled, setObsidianEnabled] = useState(true)
   const [obsidianStatus, setObsidianStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
 
-  const [machineCount, setMachineCount] = useState(0)
-  const [machines, setMachines] = useState<string[]>([])
+  const [machines, setMachines] = useState<MachineConfig[]>([])
+  const [editMachine, setEditMachine] = useState<MachineConfig | null>(null)
+  const [showAddMachine, setShowAddMachine] = useState(false)
 
   useEffect(() => {
     // Load saved config first
@@ -47,13 +49,34 @@ export function ResourceSettings() {
           if (!hasUrl) setGitUrl(detectData.gitlab.url || 'http://182.92.166.143:8929')
           if (!hasToken && detectData.gitlab.token) setGitToken(detectData.gitlab.token)
         }
-        if (detectData.machines) {
-          setMachines(detectData.machines.map((m: any) => m.host))
-          setMachineCount(detectData.machines.length)
+        if (detectData.machines && machines.length === 0) {
+          // Convert SSH hosts to basic machine configs
+          setMachines(detectData.machines.map((m: any) => ({
+            name: m.host, host: m.host.split(':')[0],
+            port: parseInt(m.host.split(':')[1]) || 22,
+            user: 'root', authMethod: 'key' as const,
+            keyPath: m.hasKey ? '~/.ssh/id_ed25519' : '',
+            description: `Detected from SSH known_hosts`
+          })))
         }
       })
       .catch(() => {})
+
+    // Load saved compute config
+    fetch('/shell/compute')
+      .then(r => r.json())
+      .then(d => { if (d.machines?.length) setMachines(d.machines) })
+      .catch(() => {})
   }, [])
+
+  function saveMachines(updated: MachineConfig[]) {
+    setMachines(updated)
+    fetch('/shell/compute/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ machines: updated })
+    }).catch(() => {})
+  }
 
   useEffect(() => {
     if (!obsidianPath) { setObsidianStatus('idle'); return }
@@ -173,8 +196,46 @@ export function ResourceSettings() {
 
       {/* 计算资源 */}
       <div className="border-b border-[var(--app-divider)]">
-        <ToggleRow label={t('settings.resources.compute')} enabled machineCount={machineCount} machines={machines} />
+        <div className="flex w-full items-center justify-between px-3 py-2.5">
+          <span className="text-[var(--app-fg)] text-sm">{t('settings.resources.compute')}</span>
+        </div>
+        <div className="px-3 pb-3 flex flex-wrap gap-1.5">
+          {machines.map((m, i) => (
+            <button key={i} type="button" onClick={() => setEditMachine(m)}
+              className="rounded bg-[var(--app-subtle-bg)] px-2 py-1 text-xs text-[var(--app-fg)] hover:bg-[var(--app-secondary-bg)] transition-colors">
+              {m.name || m.host}
+            </button>
+          ))}
+          <button type="button" onClick={() => setShowAddMachine(true)}
+            className="rounded border border-dashed border-[var(--app-divider)] px-2 py-1 text-xs text-[var(--app-hint)] hover:border-[var(--app-link)] hover:text-[var(--app-link)] transition-colors">
+            + 添加
+          </button>
+        </div>
       </div>
+
+      {/* Compute Dialog */}
+      {(editMachine || showAddMachine) && (
+        <ComputeDialog
+          machine={editMachine}
+          onSave={(m) => {
+            if (editMachine) {
+              const idx = machines.indexOf(editMachine)
+              const updated = [...machines]
+              updated[idx] = m
+              saveMachines(updated)
+            } else {
+              saveMachines([...machines, m])
+            }
+            setEditMachine(null)
+            setShowAddMachine(false)
+          }}
+          onDelete={editMachine ? () => {
+            saveMachines(machines.filter(x => x !== editMachine))
+            setEditMachine(null)
+          } : undefined}
+          onClose={() => { setEditMachine(null); setShowAddMachine(false) }}
+        />
+      )}
 
       <div className="px-3 py-3">
         <button onClick={saveResources}
