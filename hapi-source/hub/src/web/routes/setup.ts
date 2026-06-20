@@ -17,6 +17,7 @@ interface DetectedGit {
   found: boolean
   user?: string
   url?: string
+  token?: string
   error?: string
 }
 
@@ -70,15 +71,35 @@ function detectCli(prog: string, args: string[], hostnameMap: { userKey: string;
   }
   const out = new TextDecoder().decode(r.stdout).trim()
 
-  // Try to extract username
   const userMatch = out.match(new RegExp(`${hostnameMap.userKey}\\s+(\\S+)`))
   const user = userMatch ? userMatch[1] : undefined
 
-  // Try to extract URL
   const urlMatch = out.match(new RegExp(`${hostnameMap.urlKey}\\s+(\\S+)`))
   const url = urlMatch ? urlMatch[1] : undefined
 
-  return { found: true, user, url }
+  // Extract token + url from glab config file
+  let token: string | undefined
+  let configUrl: string | undefined
+  try {
+    const configPath = `${HOME}/Library/Application Support/glab-cli/config.yml`
+    if (existsSync(configPath)) {
+      const yml = readFileSync(configPath, 'utf8')
+      // Find all token lines — skip empty ones and comments, take first real token
+      const matches = yml.matchAll(/^\s*?token:\s*(\S+)/gm)
+      for (const m of matches) {
+        const val = (m[1] || '').trim()
+        if (val && !val.startsWith('#') && val.length > 5) {
+          token = val
+          break
+        }
+      }
+      // Extract non-gitlab.com host URL
+      const hostMatch = yml.match(/^\s{4}(\d+\.\d+\.\d+\.\d+:\d+):/m)
+      if (hostMatch) configUrl = `http://${hostMatch[1]}`
+    }
+  } catch { /* ignore */ }
+
+  return { found: true, user, url: url || configUrl, token }
 }
 
 function detectSshMachines(): DetectedMachine[] {

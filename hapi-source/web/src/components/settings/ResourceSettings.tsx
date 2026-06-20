@@ -19,34 +19,37 @@ export function ResourceSettings() {
   const [machines, setMachines] = useState<string[]>([])
 
   useEffect(() => {
-    // Load saved config
+    // Load saved config first
     fetch('/shell/config')
       .then(r => r.json())
-      .then(d => {
-        if (d.configured) {
-          if (d.gitlab?.url) setGitUrl(d.gitlab.url)
-          if (d.gitlab?.token) setGitToken(d.gitlab.token)
-          if (d.gitlab?.provider) setGitProvider(d.gitlab.provider)
-          if (typeof d.gitlab?.enabled === 'boolean') setGitlabEnabled(d.gitlab.enabled)
-          if (d.obsidian?.vaultPath) setObsidianPath(d.obsidian.vaultPath)
-          if (typeof d.obsidian?.enabled === 'boolean') setObsidianEnabled(d.obsidian.enabled)
+      .then(configData => {
+        if (configData.configured) {
+          if (configData.gitlab?.url) setGitUrl(configData.gitlab.url)
+          if (configData.gitlab?.token) setGitToken(configData.gitlab.token)
+          if (configData.gitlab?.provider) setGitProvider(configData.gitlab.provider)
+          if (typeof configData.gitlab?.enabled === 'boolean') setGitlabEnabled(configData.gitlab.enabled)
+          if (configData.obsidian?.vaultPath) setObsidianPath(configData.obsidian.vaultPath)
+          if (typeof configData.obsidian?.enabled === 'boolean') setObsidianEnabled(configData.obsidian.enabled)
         }
-      })
-      .catch(() => {})
 
-    // Load detection & auto-fill if not configured
-    fetch('/shell/setup/detect')
-      .then(r => r.json())
-      .then(d => {
-        if (!obsidianPath && d.obsidian?.vaults?.length) setObsidianPath(d.obsidian.vaults[0].path)
-        if (d.gitlab?.found && !gitUrl) {
-          // glab is logged in but we don't know URL from detection alone
-          // Use the common GitLab URL
-          if (!gitUrl) setGitUrl('http://182.92.166.143:8929')
+        // Then fill gaps with detection
+        return fetch('/shell/setup/detect').then(r => r.json()).then(detectData => ({ configData, detectData }))
+      })
+      .then(({ configData, detectData }) => {
+        const hasUrl = !!(configData?.configured && configData?.gitlab?.url) || !!gitUrl
+        const hasToken = !!(configData?.configured && configData?.gitlab?.token) || !!gitToken
+        const hasPath = !!(configData?.configured && configData?.obsidian?.vaultPath) || !!obsidianPath
+
+        if (!hasPath && detectData.obsidian?.vaults?.length) {
+          setObsidianPath(detectData.obsidian.vaults[0].path)
         }
-        if (d.machines) {
-          setMachines(d.machines.map((m: any) => m.host))
-          setMachineCount(d.machines.length)
+        if (detectData.gitlab?.found) {
+          if (!hasUrl) setGitUrl(detectData.gitlab.url || 'http://182.92.166.143:8929')
+          if (!hasToken && detectData.gitlab.token) setGitToken(detectData.gitlab.token)
+        }
+        if (detectData.machines) {
+          setMachines(detectData.machines.map((m: any) => m.host))
+          setMachineCount(detectData.machines.length)
         }
       })
       .catch(() => {})
