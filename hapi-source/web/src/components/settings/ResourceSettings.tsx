@@ -1,65 +1,40 @@
 import { useState, useEffect } from 'react'
 
-interface ResourceConfig {
-  gitlab?: {
-    enabled: boolean
-    url: string
-    token: string
-  }
-  obsidian?: {
-    enabled: boolean
-    vaultPath: string
-  }
-  compute?: {
-    enabled: boolean
-  }
-}
-
 export function ResourceSettings() {
-  const [config, setConfig] = useState<ResourceConfig>({})
-  const [gitlabUrl, setGitlabUrl] = useState('')
-  const [gitlabToken, setGitlabToken] = useState('')
-  const [gitlabStatus, setGitlabStatus] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
-  const [gitlabMsg, setGitlabMsg] = useState('')
+  const [gitProvider, setGitProvider] = useState<'gitlab' | 'github'>('gitlab')
+  const [gitUrl, setGitUrl] = useState('')
+  const [gitToken, setGitToken] = useState('')
+  const [showToken, setShowToken] = useState(false)
+  const [gitStatus, setGitStatus] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
+  const [gitMsg, setGitMsg] = useState('')
   const [gitlabEnabled, setGitlabEnabled] = useState(true)
 
   const [obsidianPath, setObsidianPath] = useState('')
   const [obsidianEnabled, setObsidianEnabled] = useState(true)
   const [obsidianStatus, setObsidianStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
 
-  const [computeEnabled, setComputeEnabled] = useState(true)
   const [machineCount, setMachineCount] = useState(0)
   const [machines, setMachines] = useState<string[]>([])
 
-  // Load config + detection
   useEffect(() => {
-    // Load saved config
     fetch('/shell/config')
       .then(r => r.json())
       .then(d => {
         if (d.configured) {
-          setConfig(d)
-          if (d.gitlab?.url) setGitlabUrl(d.gitlab.url)
-          if (d.gitlab?.token) setGitlabToken(d.gitlab.token)
+          if (d.gitlab?.url) setGitUrl(d.gitlab.url)
+          if (d.gitlab?.token) setGitToken(d.gitlab.token)
+          if (d.gitlab?.provider) setGitProvider(d.gitlab.provider)
           if (typeof d.gitlab?.enabled === 'boolean') setGitlabEnabled(d.gitlab.enabled)
           if (d.obsidian?.vaultPath) setObsidianPath(d.obsidian.vaultPath)
           if (typeof d.obsidian?.enabled === 'boolean') setObsidianEnabled(d.obsidian.enabled)
-          if (typeof d.compute?.enabled === 'boolean') setComputeEnabled(d.compute.enabled)
         }
       })
       .catch(() => {})
 
-    // Load detection data
     fetch('/shell/setup/detect')
       .then(r => r.json())
       .then(d => {
-        // Auto-fill from detection if not set
-        if (!obsidianPath && d.obsidian?.vaults?.length) {
-          setObsidianPath(d.obsidian.vaults[0].path)
-        }
-        if (d.gitlab?.found && !gitlabUrl) {
-          // glab detection doesn't give us the URL easily, keep what user set
-        }
+        if (!obsidianPath && d.obsidian?.vaults?.length) setObsidianPath(d.obsidian.vaults[0].path)
         if (d.machines) {
           setMachines(d.machines.map((m: any) => m.host))
           setMachineCount(d.machines.length)
@@ -68,146 +43,139 @@ export function ResourceSettings() {
       .catch(() => {})
   }, [])
 
-  // Verify obsidian path
   useEffect(() => {
     if (!obsidianPath) { setObsidianStatus('idle'); return }
-    fetch(`/shell/obsidian/tree?path=`)
+    fetch('/shell/obsidian/tree?path=')
       .then(r => { setObsidianStatus(r.ok ? 'ok' : 'fail') })
       .catch(() => setObsidianStatus('fail'))
   }, [obsidianPath])
 
-  // Test GitLab connection
-  function testGitlab() {
-    setGitlabStatus('testing')
-    setGitlabMsg('')
-    fetch(`/shell/issues?q=&force=1`)
+  function testGit() {
+    setGitStatus('testing')
+    setGitMsg('')
+    fetch('/shell/issues?q=&force=1')
       .then(r => r.json())
       .then(d => {
         if (d.issues?.length > 0) {
-          setGitlabStatus('ok')
-          setGitlabMsg(`${d.issues.length} issues 可访问`)
+          setGitStatus('ok')
+          setGitMsg(`${d.issues.length} issues 可访问`)
         } else {
-          setGitlabStatus('fail')
-          setGitlabMsg('无法获取 Issues。检查 Token 和 URL')
+          setGitStatus('fail')
+          setGitMsg('无法获取 Issues。检查地址和 Token')
         }
       })
       .catch(err => {
-        setGitlabStatus('fail')
-        setGitlabMsg(err.message || '连接失败')
+        setGitStatus('fail')
+        setGitMsg(err.message || '连接失败')
       })
   }
 
-  // Save resource config
   function saveResources() {
     fetch('/shell/setup/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...config,
-        gitlab: { enabled: gitlabEnabled, url: gitlabUrl, token: gitlabToken },
+        gitlab: { enabled: gitlabEnabled, provider: gitProvider, url: gitUrl, token: gitToken },
         obsidian: { enabled: obsidianEnabled, vaultPath: obsidianPath },
-        compute: { enabled: computeEnabled }
+        compute: { enabled: true }
       })
-    }).then(() => {
-      // Reload to apply tab changes
-      window.location.reload()
-    }).catch(() => {})
+    }).then(() => window.location.reload()).catch(() => {})
   }
 
   return (
     <div>
-      {/* GitLab */}
       <div className="border-b border-[var(--app-divider)]">
         <div className="px-3 py-2 text-xs font-semibold text-[var(--app-hint)] uppercase tracking-wide">
           Resources
         </div>
 
-        {/* GitLab row */}
-        <ToggleRow label="GitLab" enabled={gitlabEnabled} onChange={setGitlabEnabled}
-          status={gitlabStatus === 'ok' ? '已连接' : gitlabStatus === 'fail' ? '连接失败' : undefined}
-          statusOk={gitlabStatus === 'ok'} />
+        {/* 议题 (Git Issues) */}
+        <Section label="议题" enabled={gitlabEnabled} onChange={setGitlabEnabled}
+          status={gitStatus === 'ok' ? '已连接' : gitStatus === 'fail' ? '连接失败' : undefined}
+          statusOk={gitStatus === 'ok'} />
         {gitlabEnabled && (
           <div className="px-3 pb-3 space-y-2">
-            <InputField label="URL" value={gitlabUrl} onChange={setGitlabUrl} placeholder="http://182.92.166.143:8929" />
+            {/* Provider selector */}
+            <div>
+              <Label text="Git 服务" />
+              <select value={gitProvider} onChange={e => setGitProvider(e.target.value as any)}
+                className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-[11px] text-[var(--app-fg)] outline-none focus:border-[var(--app-link)]">
+                <option value="gitlab">GitLab</option>
+                <option value="github">GitHub</option>
+              </select>
+            </div>
+            <InputField label="URL" value={gitUrl} onChange={setGitUrl}
+              placeholder={gitProvider === 'gitlab' ? 'http://your-gitlab.com' : 'https://github.com'} />
             <div>
               <Label text="Access Token" />
               <div className="flex gap-2">
-                <input type="password" value={gitlabToken} onChange={e => setGitlabToken(e.target.value)}
-                  placeholder="glpat-..."
-                  className="flex-1 rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]" />
-                <button onClick={testGitlab}
-                  disabled={gitlabStatus === 'testing'}
+                <div className="relative flex-1">
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    value={gitToken} onChange={e => setGitToken(e.target.value)}
+                    placeholder={gitProvider === 'gitlab' ? 'glpat-...' : 'ghp_...'}
+                    className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1 pr-8 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]" />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-[10px] text-[var(--app-hint)] hover:text-[var(--app-fg)]"
+                    title={showToken ? '隐藏' : '显示'}>
+                    {showToken ? '🙈' : '👁'}
+                  </button>
+                </div>
+                <button onClick={testGit}
+                  disabled={gitStatus === 'testing'}
                   className="shrink-0 rounded border border-[var(--app-divider)] px-3 py-1 text-[10px] text-[var(--app-fg)] hover:bg-[var(--app-subtle-bg)] disabled:opacity-50">
-                  {gitlabStatus === 'testing' ? '测试中...' : '测试连接'}
+                  {gitStatus === 'testing' ? '测试中...' : '测试连接'}
                 </button>
               </div>
-              {gitlabStatus === 'ok' && (
-                <div className="mt-1 text-[10px] text-emerald-500">✓ {gitlabMsg}</div>
-              )}
-              {gitlabStatus === 'fail' && (
-                <div className="mt-1 text-[10px] text-red-500">✗ {gitlabMsg}</div>
-              )}
+              {gitStatus === 'ok' && <div className="mt-1 text-[10px] text-emerald-500">✓ {gitMsg}</div>}
+              {gitStatus === 'fail' && <div className="mt-1 text-[10px] text-red-500">✗ {gitMsg}</div>}
+            </div>
+            <div className="text-[9px] text-[var(--app-hint)]">
+              支持 GitLab 和 GitHub。关闭开关可隐藏「议题」Tab。
             </div>
           </div>
         )}
       </div>
 
-      {/* Obsidian */}
+      {/* 知识库 */}
       <div className="border-b border-[var(--app-divider)]">
-        <ToggleRow label="Obsidian 知识库" enabled={obsidianEnabled} onChange={setObsidianEnabled}
+        <Section label="知识库" enabled={obsidianEnabled} onChange={setObsidianEnabled}
           status={obsidianStatus === 'ok' ? '已检测' : undefined} statusOk />
         {obsidianEnabled && (
           <div className="px-3 pb-3">
             <Label text="Vault 路径" />
             <div className="flex gap-2">
               <input value={obsidianPath} onChange={e => setObsidianPath(e.target.value)}
+                placeholder="~/Library/.../ObsidianVault"
                 className="flex-1 rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1 text-[11px] text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]" />
               <button
                 onClick={() => {
                   const input = document.createElement('input')
                   input.type = 'file'
                   input.webkitdirectory = true
-                  input.onchange = (e: any) => {
-                    const files = e.target?.files
-                    if (files?.[0]) {
-                      // Extract directory path from file path
-                      const fp = files[0].webkitRelativePath || ''
-                      setObsidianPath(fp ? obsidianPath : obsidianPath)
-                    }
-                  }
                   input.click()
                 }}
                 className="shrink-0 rounded border border-[var(--app-divider)] px-3 py-1 text-[10px] text-[var(--app-fg)] hover:bg-[var(--app-subtle-bg)]">
                 浏览...
               </button>
             </div>
-            {obsidianStatus === 'ok' && (
-              <div className="mt-1 text-[10px] text-emerald-500">✓ 路径有效</div>
-            )}
-            {obsidianStatus === 'fail' && (
-              <div className="mt-1 text-[10px] text-red-500">✗ 路径无效</div>
-            )}
+            {obsidianStatus === 'ok' && <div className="mt-1 text-[10px] text-emerald-500">✓ 路径有效</div>}
+            {obsidianStatus === 'fail' && <div className="mt-1 text-[10px] text-red-500">✗ 路径无效</div>}
+            <div className="mt-1 text-[9px] text-[var(--app-hint)]">
+              Obsidian Vault 路径。关闭开关可隐藏「知识库」Tab。
+            </div>
           </div>
         )}
       </div>
 
-      {/* Compute Resources */}
+      {/* 计算资源 */}
       <div className="border-b border-[var(--app-divider)]">
-        <ToggleRow label="计算资源" enabled={computeEnabled} onChange={setComputeEnabled}
-          status={`${machineCount} 台`} statusOk />
-        {computeEnabled && machines.length > 0 && (
-          <div className="px-3 pb-3 flex flex-wrap gap-1">
-            {machines.slice(0, 8).map(h => (
-              <span key={h} className="rounded bg-[var(--app-subtle-bg)] px-2 py-0.5 text-[10px] text-[var(--app-fg)]">{h}</span>
-            ))}
-            {machines.length > 8 && (
-              <span className="rounded bg-[var(--app-subtle-bg)] px-2 py-0.5 text-[10px] text-[var(--app-hint)]">+{machines.length - 8} 更多</span>
-            )}
-          </div>
-        )}
+        <Section label="计算资源" enabled machineCount={machineCount} machines={machines} />
       </div>
 
-      {/* Save button */}
+      {/* Save */}
       <div className="px-3 py-3">
         <button onClick={saveResources}
           className="w-full rounded-md bg-[var(--app-link)] px-4 py-2 text-[11px] font-medium text-white
@@ -215,44 +183,58 @@ export function ResourceSettings() {
           保存资源设置
         </button>
         <div className="mt-1 text-center text-[9px] text-[var(--app-hint)]">
-          关闭资源开关后，对应 Tab 将在下次刷新后隐藏
+          关闭资源开关后，对应 Tab 将在刷新后隐藏
         </div>
       </div>
     </div>
   )
 }
 
-function ToggleRow(props: {
+function Section(props: {
   label: string
   enabled: boolean
-  onChange: (v: boolean) => void
+  onChange?: (v: boolean) => void
   status?: string
   statusOk?: boolean
+  machineCount?: number
+  machines?: string[]
 }) {
   return (
-    <div className="flex w-full items-center justify-between px-3 py-2.5">
-      <div className="flex items-center gap-2">
-        <span className="text-[var(--app-fg)] text-sm">{props.label}</span>
-        {props.status && (
-          <span className={`rounded px-1.5 py-0.5 text-[9px] ${
-            props.statusOk ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-subtle-bg)] text-[var(--app-hint)]'
-          }`}>
-            {props.status}
-          </span>
+    <>
+      <div className="flex w-full items-center justify-between px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[var(--app-fg)] text-sm">{props.label}</span>
+          {props.status && (
+            <span className={`rounded px-1.5 py-0.5 text-[9px] ${
+              props.statusOk ? 'bg-emerald-500/10 text-emerald-500' : 'bg-[var(--app-subtle-bg)] text-[var(--app-hint)]'
+            }`}>
+              {props.status}
+            </span>
+          )}
+          {props.machineCount !== undefined && (
+            <span className="rounded bg-[var(--app-subtle-bg)] px-1.5 py-0.5 text-[9px] text-[var(--app-hint)]">
+              {props.machineCount} 台
+            </span>
+          )}
+        </div>
+        {props.onChange && (
+          <button type="button" onClick={() => props.onChange?.(!props.enabled)}
+            className={`relative h-5 w-9 rounded-full transition-colors ${props.enabled ? 'bg-[var(--app-link)]' : 'bg-[var(--app-divider)]'}`}>
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${props.enabled ? 'left-4' : 'left-0.5'}`} />
+          </button>
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => props.onChange(!props.enabled)}
-        className={`relative h-5 w-9 rounded-full transition-colors ${
-          props.enabled ? 'bg-[var(--app-link)]' : 'bg-[var(--app-divider)]'
-        }`}
-      >
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
-          props.enabled ? 'left-4' : 'left-0.5'
-        }`} />
-      </button>
-    </div>
+      {props.machines && props.machines.length > 0 && (
+        <div className="px-3 pb-3 flex flex-wrap gap-1">
+          {props.machines.slice(0, 8).map(h => (
+            <span key={h} className="rounded bg-[var(--app-subtle-bg)] px-2 py-0.5 text-[10px] text-[var(--app-fg)]">{h}</span>
+          ))}
+          {props.machines.length > 8 && (
+            <span className="rounded bg-[var(--app-subtle-bg)] px-2 py-0.5 text-[10px] text-[var(--app-hint)]">+{props.machines.length - 8} 更多</span>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
