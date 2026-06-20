@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { serveStatic } from 'hono/bun'
 import { getConfiguration } from '../configuration'
 import { PROTOCOL_VERSION } from '@hapi/protocol'
@@ -22,6 +22,7 @@ import { createGitRoutes } from './routes/git'
 import { createSearchRoutes } from './routes/search'
 import { createSetupRoutes } from './routes/setup'
 import { createCronRoutes } from './routes/cron'
+import { createNotifyRoutes, checkNewIssues } from './routes/notify'
 import { createCliRoutes } from './routes/cli'
 import { createCodexDesktopRoutes } from './routes/codexDesktop'
 import { createPushRoutes } from './routes/push'
@@ -238,6 +239,7 @@ function createWebApp(options: {
     app.route('/', createSearchRoutes())
     app.route('/', createSetupRoutes())
     app.route('/', createCronRoutes())
+    app.route('/', createNotifyRoutes())
 
     app.use('/api/*', createAuthMiddleware(options.jwtSecret))
     app.route('/api', createEventsRoutes(options.getSseManager, options.getSyncEngine, options.getVisibilityTracker))
@@ -493,6 +495,31 @@ export async function startWebServer(options: {
     })
 
     console.log(`[Web] hub listening on ${configuration.listenHost}:${configuration.listenPort}`)
+
+    // Start GitLab issue notification checker (HAPI Shell)
+    let notifyTimer: ReturnType<typeof setInterval> | null = null
+    const startNotifyChecker = () => {
+      const configPath = `${process.env.HOME}/.hapi-shell/notify-config.json`
+      let intervalMin = 10
+      try {
+        if (existsSync(configPath)) {
+          const cfg = JSON.parse(readFileSync(configPath, 'utf8'))
+          if (cfg.enabled === false) return
+          intervalMin = cfg.intervalMinutes || 10
+        }
+      } catch {}
+
+      if (notifyTimer) clearInterval(notifyTimer)
+      notifyTimer = setInterval(() => {
+        const issues = checkNewIssues()
+        if (issues.length > 0) {
+          console.log(`[Notify] ${issues.length} new assigned issues:`, issues.map(i => `!${i.iid} ${i.title}`).join(', '))
+        }
+      }, intervalMin * 60 * 1000)
+    }
+    startNotifyChecker()
+    // Re-check config every 5 minutes for dynamic interval changes
+    setInterval(startNotifyChecker, 5 * 60 * 1000)
     console.log(`[Web] public URL: ${configuration.publicUrl}`)
 
     return server

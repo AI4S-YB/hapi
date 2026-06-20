@@ -19,6 +19,8 @@ export function ResourceSettings() {
   const [machines, setMachines] = useState<MachineConfig[]>([])
   const [editMachine, setEditMachine] = useState<MachineConfig | null>(null)
   const [showAddMachine, setShowAddMachine] = useState(false)
+  const [notifyEnabled, setNotifyEnabled] = useState(true)
+  const [notifyInterval, setNotifyInterval] = useState(10)
 
   useEffect(() => {
     // Load saved config first
@@ -67,7 +69,24 @@ export function ResourceSettings() {
       .then(r => r.json())
       .then(d => { if (d.machines?.length) setMachines(d.machines) })
       .catch(() => {})
+
+    // Load notify config
+    fetch('/shell/notify/config')
+      .then(r => r.json())
+      .then(d => {
+        if (typeof d.enabled === 'boolean') setNotifyEnabled(d.enabled)
+        if (d.intervalMinutes) setNotifyInterval(d.intervalMinutes)
+      })
+      .catch(() => {})
   }, [])
+
+  function saveNotify() {
+    fetch('/shell/notify/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: notifyEnabled, intervalMinutes: notifyInterval })
+    }).catch(() => {})
+  }
 
   function saveMachines(updated: MachineConfig[]) {
     setMachines(updated)
@@ -190,6 +209,36 @@ export function ResourceSettings() {
             {obsidianStatus === 'ok' && <div className="mt-1 text-xs text-emerald-500">✓ {t('settings.resources.pathValid')}</div>}
             {obsidianStatus === 'fail' && <div className="mt-1 text-xs text-red-500">✗ {t('settings.resources.pathInvalid')}</div>}
             <div className="mt-1 text-xs text-[var(--app-hint)]">{t('settings.resources.knowledgeHint')}</div>
+          </div>
+        )}
+      </div>
+
+      {/* 议题通知 */}
+      <div className="border-b border-[var(--app-divider)]">
+        <div className="flex w-full items-center justify-between px-3 py-2.5">
+          <span className="text-[var(--app-fg)] text-sm">议题通知</span>
+          <button type="button" onClick={() => { setNotifyEnabled(!notifyEnabled); saveNotify() }}
+            className={`relative h-5 w-9 rounded-full transition-colors ${notifyEnabled ? 'bg-[var(--app-link)]' : 'bg-[var(--app-divider)]'}`}>
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${notifyEnabled ? 'left-4' : 'left-0.5'}`} />
+          </button>
+        </div>
+        {notifyEnabled && (
+          <div className="px-3 pb-3 space-y-2">
+            <div>
+              <Label text="检查频率" />
+              <select value={notifyInterval} onChange={e => { setNotifyInterval(Number(e.target.value)); setTimeout(saveNotify, 0) }}
+                className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-sm text-[var(--app-fg)] outline-none focus:border-[var(--app-link)]">
+                <option value={5}>每 5 分钟</option>
+                <option value={10}>每 10 分钟</option>
+                <option value={30}>每 30 分钟</option>
+                <option value={60}>每小时</option>
+                <option value={360}>每 6 小时</option>
+                <option value={1440}>每天</option>
+              </select>
+            </div>
+            <div className="text-xs text-[var(--app-hint)]">
+              检查 GitLab 是否有新指派给你的议题，发现后推送通知。
+            </div>
           </div>
         )}
       </div>
