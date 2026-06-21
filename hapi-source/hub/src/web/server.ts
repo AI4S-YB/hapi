@@ -23,6 +23,7 @@ import { createSearchRoutes } from './routes/search'
 import { createSetupRoutes } from './routes/setup'
 import { createCronRoutes } from './routes/cron'
 import { createNotifyRoutes, checkNewIssues } from './routes/notify'
+import { createDataRoutes } from './routes/data'
 import { createCliRoutes } from './routes/cli'
 import { createCodexDesktopRoutes } from './routes/codexDesktop'
 import { createPushRoutes } from './routes/push'
@@ -239,6 +240,7 @@ function createWebApp(options: {
     app.route('/', createSearchRoutes())
     app.route('/', createSetupRoutes())
     app.route('/', createCronRoutes())
+    app.route('/', createDataRoutes())
     app.route('/', createNotifyRoutes())
 
     app.use('/api/*', createAuthMiddleware(options.jwtSecret))

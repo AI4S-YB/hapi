@@ -32,12 +32,19 @@ interface DetectedSkill {
   path: string
 }
 
+interface DetectedFanFiles {
+  installed: boolean
+  indexedFiles?: number
+  servers?: Array<{ name: string; files: number }>
+}
+
 interface DetectionResult {
   obsidian: DetectedObsidian
   github: DetectedGit
   gitlab: DetectedGit
   machines: DetectedMachine[]
   skills: DetectedSkill[]
+  fanFiles: DetectedFanFiles
 }
 
 function detectObsidian(): DetectedObsidian {
@@ -196,13 +203,34 @@ function detectSkills(): DetectedSkill[] {
 export function createSetupRoutes(): Hono {
   const app = new Hono()
 
+  function detectFanFiles(): DetectedFanFiles {
+    const candidates = ['/usr/local/bin/fan-files', `${HOME}/.cargo/bin/fan-files`, 'fan-files']
+    for (const bin of candidates) {
+      const r = spawnSync(bin, ['--version'], { timeout: 3000 })
+      if (r.status === 0) {
+        try {
+          const s = spawnSync(bin, ['status'], { timeout: 5000 })
+          const raw = new TextDecoder().decode(s.stdout)
+          const files = raw.match(/Indexed files:\s+(\d+)/)
+          const servers: Array<{ name: string; files: number }> = []
+          const serverRe = /^\s{2}(\S+)\s+(\d+)\s+files/gm
+          let m
+          while ((m = serverRe.exec(raw)) !== null) servers.push({ name: m[1], files: parseInt(m[2]) })
+          return { installed: true, indexedFiles: files ? parseInt(files[1]) : 0, servers }
+        } catch { return { installed: true } }
+      }
+    }
+    return { installed: false }
+  }
+
   app.get('/shell/setup/detect', async (c) => {
     const result: DetectionResult = {
       obsidian: detectObsidian(),
       github: detectCli('gh', ['auth', 'status'], { userKey: 'Logged in to github.com as', urlKey: 'github.com' }),
       gitlab: detectCli('glab', ['auth', 'status'], { userKey: 'Logged in to', urlKey: 'gitlab.com' }),
       machines: detectSshMachines(),
-      skills: detectSkills()
+      skills: detectSkills(),
+      fanFiles: detectFanFiles()
     }
     return c.json(result)
   })
