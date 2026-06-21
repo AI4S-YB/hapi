@@ -61,7 +61,8 @@ export function ResourceSettings() {
             port: parseInt(m.host.split(':')[1]) || 22,
             user: 'root', authMethod: 'key' as const,
             keyPath: m.hasKey ? '~/.ssh/id_ed25519' : '',
-            description: `Detected from SSH known_hosts`
+            description: `Detected from SSH known_hosts`,
+            dataPaths: []
           })))
         }
       })
@@ -70,7 +71,7 @@ export function ResourceSettings() {
     // Load saved compute config
     fetch('/shell/compute')
       .then(r => r.json())
-      .then(d => { if (d.machines?.length) setMachines(d.machines) })
+      .then(d => { if (d.machines?.length) setMachines(d.machines.map((m: any) => ({ ...m, dataPaths: m.dataPaths || [] }))) })
       .catch(() => {})
 
     // Load fan-files data status
