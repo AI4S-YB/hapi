@@ -57,7 +57,7 @@ export function ResourceSettings() {
         if (detectData.machines && machines.length === 0) {
           // Convert SSH hosts to basic machine configs
           setMachines(detectData.machines.map((m: any) => ({
-            name: m.host, host: m.host.split(':')[0],
+            name: m.host, host: m.ip || m.host.split(':')[0],
             port: parseInt(m.host.split(':')[1]) || 22,
             user: 'root', authMethod: 'key' as const,
             keyPath: m.hasKey ? '~/.ssh/id_ed25519' : '',
@@ -262,7 +262,7 @@ export function ResourceSettings() {
           {machines.map((m, i) => (
             <button key={i} type="button" onClick={() => setEditMachine(m)}
               className="rounded bg-[var(--app-subtle-bg)] px-2 py-1 text-xs text-[var(--app-fg)] hover:bg-[var(--app-secondary-bg)] transition-colors">
-              {m.name || m.host}
+              {m.name || m.host}{m.host !== m.name ? ` (${m.host})` : ''}
             </button>
           ))}
           <button type="button" onClick={() => setShowAddMachine(true)}

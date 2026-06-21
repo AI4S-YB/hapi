@@ -23,6 +23,7 @@ interface DetectedGit {
 
 interface DetectedMachine {
   host: string
+  ip?: string
   hasKey: boolean
   hasConfig: boolean
 }
@@ -138,17 +139,22 @@ function detectSshMachines(): DetectedMachine[] {
     } catch { /* ignore */ }
   }
 
-  // Parse SSH config for Host aliases
+  // Parse SSH config for Host aliases + HostName (IP)
   const configHosts = new Set<string>()
+  const hostToIp: Record<string, string> = {}
   if (existsSync(sshConfig)) {
     try {
       const lines = readFileSync(sshConfig, 'utf8').split('\n')
+      let currentHost = ''
       for (const line of lines) {
-        const m = line.trim().match(/^Host\s+(.+)/i)
-        if (m && !m[1].includes('*')) {
-          for (const h of m[1].split(/\s+/)) {
-            configHosts.add(h)
-          }
+        const hostMatch = line.trim().match(/^Host\s+(.+)/i)
+        if (hostMatch && !hostMatch[1].includes('*')) {
+          currentHost = hostMatch[1].split(/\s+/)[0]
+          configHosts.add(currentHost)
+        }
+        const hnMatch = line.trim().match(/^HostName\s+(.+)/i)
+        if (hnMatch && currentHost) {
+          hostToIp[currentHost] = hnMatch[1]
         }
       }
     } catch { /* ignore */ }
@@ -159,12 +165,12 @@ function detectSshMachines(): DetectedMachine[] {
 
   // Merge hosts
   for (const host of hosts) {
-    machines.push({ host, hasKey: hasKeys, hasConfig: configHosts.has(host) })
+    machines.push({ host, ip: hostToIp[host], hasKey: hasKeys, hasConfig: configHosts.has(host) })
   }
   // Add config-only hosts not in known_hosts
   for (const host of configHosts) {
     if (!hosts.has(host)) {
-      machines.push({ host, hasKey: hasKeys, hasConfig: true })
+      machines.push({ host, ip: hostToIp[host], hasKey: hasKeys, hasConfig: true })
     }
   }
 
