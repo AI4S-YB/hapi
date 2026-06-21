@@ -27,20 +27,9 @@ const defaults: MachineConfig = {
 
 export function ComputeDialog(props: Props) {
   const [m, setM] = useState<MachineConfig>(props.machine || defaults)
-  const [newDataPath, setNewDataPath] = useState('')
 
   // Find matching fan-files server
   const ffServer = props.dataStats?.servers?.find(s => s.name === m.name)
-
-  function addDataPath() {
-    if (!newDataPath.trim()) return
-    setM({ ...m, dataPaths: [...m.dataPaths, newDataPath.trim()] })
-    setNewDataPath('')
-  }
-
-  function removeDataPath(idx: number) {
-    setM({ ...m, dataPaths: m.dataPaths.filter((_, i) => i !== idx) })
-  }
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -118,42 +107,23 @@ export function ComputeDialog(props: Props) {
             数据资源
           </div>
           <div className="space-y-2.5 px-4 py-3">
-            {/* fan-files stats */}
-            {ffServer && (
+            {/* fan-files stats — from actual fan-files status */}
+            {ffServer ? (
               <div className="rounded-md bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                   <span className="text-emerald-500 font-medium">fan-files</span>
                   <span className="text-[var(--app-fg)]">{ffServer.files.toLocaleString()} 文件已索引</span>
                 </div>
-              </div>
-            )}
-
-            {/* Data paths */}
-            <Field label="扫描路径">
-              <div className="space-y-1.5">
-                {m.dataPaths.map((p, i) => (
-                  <div key={i} className="flex items-center gap-1">
-                    <span className="flex-1 rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-fg)]">{p}</span>
-                    <button onClick={() => removeDataPath(i)}
-                      className="shrink-0 rounded p-1 text-[10px] text-[var(--app-hint)] hover:text-red-500">✕</button>
-                  </div>
-                ))}
-                <div className="flex gap-1">
-                  <input value={newDataPath} onChange={e => setNewDataPath(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDataPath() } }}
-                    placeholder="/data/biodata"
-                    className="flex-1 w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-xs text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]" />
-                  <button onClick={addDataPath}
-                    className="shrink-0 rounded border border-dashed border-[var(--app-divider)] px-2 py-1 text-xs text-[var(--app-hint)] hover:border-[var(--app-link)] hover:text-[var(--app-link)]">
-                    + 添加
-                  </button>
+                <div className="mt-1 text-[10px] text-[var(--app-hint)]">
+                  扫描路径由 fan-files 管理 (fan-files servers add/remove)
                 </div>
               </div>
-            </Field>
-            <div className="text-[10px] text-[var(--app-hint)]">
-              这些路径将被 fan-files 扫描和索引。添加后需要在 fan-files 中配置对应的 server。
-            </div>
+            ) : (
+              <div className="text-xs text-[var(--app-hint)]">
+                此机器未在 fan-files 中配置。使用 <code className="rounded bg-[var(--app-subtle-bg)] px-1 text-[10px]">fan-files servers add</code> 添加。
+              </div>
+            )}
           </div>
         </div>
 
