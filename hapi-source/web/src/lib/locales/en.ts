@@ -649,7 +649,7 @@ export default {
   // Settings - Resources (HAPI Shell)
   'settings.resources.issues': 'Issues',
   'settings.resources.knowledge': 'Knowledge',
-  'settings.resources.compute': 'Compute',
+  'settings.resources.compute': 'Compute & Data',
   'settings.resources.connected': 'Connected',
   'settings.resources.connectFailed': 'Connection failed',
   'settings.resources.detected': 'Detected',

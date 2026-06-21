@@ -252,30 +252,11 @@ export function ResourceSettings() {
         )}
       </div>
 
-      {/* 计算资源 */}
+      {/* 计算与数据资源 */}
       <div className="border-b border-[var(--app-divider)]">
         <div className="flex w-full items-center justify-between px-3 py-2.5">
           <span className="text-[var(--app-fg)] text-sm">{t('settings.resources.compute')}</span>
         </div>
-        {/* fan-files data stats */}
-        {fanFilesStatus?.installed && (
-          <div className="px-3 pb-2">
-            <div className="flex items-center gap-2 text-xs text-[var(--app-hint)]">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              📊 fan-files · {fanFilesStatus.indexedFiles?.toLocaleString() || 0} 文件已索引
-              {fanFilesStatus.servers?.map(s => (
-                <span key={s.name} className="rounded bg-[var(--app-subtle-bg)] px-1.5 py-0.5 text-[10px]">
-                  {s.name}: {s.files?.toLocaleString()}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-        {fanFilesStatus && !fanFilesStatus.installed && (
-          <div className="px-3 pb-2 text-xs text-[var(--app-hint)]">
-            📊 fan-files 未安装 · <span className="text-[var(--app-link)] cursor-pointer">安装指南</span>
-          </div>
-        )}
         <div className="px-3 pb-3 flex flex-wrap gap-1.5">
           {machines.map((m, i) => (
             <button key={i} type="button" onClick={() => setEditMachine(m)}
@@ -294,6 +275,7 @@ export function ResourceSettings() {
       {(editMachine || showAddMachine) && (
         <ComputeDialog
           machine={editMachine}
+          dataStats={fanFilesStatus}
           onSave={(m) => {
             if (editMachine) {
               const idx = machines.indexOf(editMachine)

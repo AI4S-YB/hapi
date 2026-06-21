@@ -653,7 +653,7 @@ export default {
   // Settings - Resources (HAPI Shell)
   'settings.resources.issues': '议题',
   'settings.resources.knowledge': '知识库',
-  'settings.resources.compute': '计算资源',
+  'settings.resources.compute': '计算与数据资源',
   'settings.resources.connected': '已连接',
   'settings.resources.connectFailed': '连接失败',
   'settings.resources.detected': '已检测',

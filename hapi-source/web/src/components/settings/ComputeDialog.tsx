@@ -12,6 +12,7 @@ export interface MachineConfig {
 
 interface Props {
   machine: MachineConfig | null  // null = adding new
+  dataStats?: { indexedFiles?: number; servers?: Array<{name: string; files: number}> } | null
   onSave: (m: MachineConfig) => void
   onDelete?: () => void
   onClose: () => void
@@ -52,7 +53,9 @@ export function ComputeDialog(props: Props) {
           <div className="flex gap-2">
             <div className="flex-1"><Field label="主机地址">
               <input value={m.host} onChange={e => setM({...m, host: e.target.value})}
+                placeholder="dev-server 或 your-server.com"
                 className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-sm text-[var(--app-fg)] outline-none focus:border-[var(--app-link)]" />
+              <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">SSH 主机名，非 IP 地址</div>
             </Field></div>
             <div className="w-20"><Field label="端口">
               <input type="number" value={m.port} onChange={e => setM({...m, port: Number(e.target.value) || 22})}
@@ -79,6 +82,18 @@ export function ComputeDialog(props: Props) {
                 className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-sm text-[var(--app-fg)] outline-none focus:border-[var(--app-link)]" />
             </Field>
           )}
+
+          {/* fan-files data stats — only if this machine has scanned data */}
+          {props.dataStats?.servers?.filter(s => s.name === m.name).map(s => (
+            <div key={s.name} className="rounded-md bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span className="text-emerald-500 font-medium">📊 fan-files</span>
+                <span className="text-[var(--app-fg)]">{s.files.toLocaleString()} 文件已索引</span>
+              </div>
+              <div className="mt-1 text-[10px] text-[var(--app-hint)]">路径: /data/biodata · 扫描于 fan-files config</div>
+            </div>
+          ))}
 
           <Field label="描述 / 用途">
             <textarea rows={3} value={m.description} onChange={e => setM({...m, description: e.target.value})}
