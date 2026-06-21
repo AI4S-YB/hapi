@@ -54,24 +54,31 @@ export function ResourceSettings() {
           if (!hasUrl) setGitUrl(detectData.gitlab.url || 'http://182.92.166.143:8929')
           if (!hasToken && detectData.gitlab.token) setGitToken(detectData.gitlab.token)
         }
-        if (detectData.machines && machines.length === 0) {
-          // Convert SSH hosts to basic machine configs
-          setMachines(detectData.machines.map((m: any) => ({
-            name: m.host, host: m.ip || m.host.split(':')[0],
-            port: parseInt(m.host.split(':')[1]) || 22,
-            user: 'root', authMethod: 'key' as const,
-            keyPath: m.hasKey ? '~/.ssh/id_ed25519' : '',
-            description: `Detected from SSH known_hosts`,
-            dataPaths: []
-          })))
-        }
       })
       .catch(() => {})
 
-    // Load saved compute config
+    // Load saved machines FIRST, then only detect if none saved
     fetch('/shell/compute')
       .then(r => r.json())
-      .then(d => { if (d.machines?.length) setMachines(d.machines.map((m: any) => ({ ...m, dataPaths: m.dataPaths || [] }))) })
+      .then(d => {
+        if (d.machines?.length) {
+          setMachines(d.machines.map((m: any) => ({ ...m, dataPaths: m.dataPaths || [] })))
+        } else {
+          // No saved machines — run detection
+          return fetch('/shell/setup/detect').then(r => r.json()).then(detectData => {
+            if (detectData.machines?.length) {
+              setMachines(detectData.machines.map((m: any) => ({
+                name: m.host, host: m.ip || m.host.split(':')[0],
+                port: parseInt(m.host.split(':')[1]) || 22,
+                user: 'root', authMethod: 'key' as const,
+                keyPath: m.hasKey ? '~/.ssh/id_ed25519' : '',
+                description: 'Detected from SSH known_hosts',
+                dataPaths: []
+              })))
+            }
+          })
+        }
+      })
       .catch(() => {})
 
     // Load fan-files data status
