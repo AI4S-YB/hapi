@@ -74,9 +74,9 @@ export function ComputeDialog(props: Props) {
             <div className="flex gap-2">
               <div className="flex-1"><Field label="主机地址">
                 <input value={m.host} onChange={e => setM({...m, host: e.target.value})}
-                  placeholder="dev-server 或 47.95.117.10"
+                  placeholder="47.95.117.10"
                   className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-sm text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]" />
-                <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">SSH 主机名或 IP 地址</div>
+                <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">IP 地址</div>
               </Field></div>
               <div className="w-20"><Field label="端口">
                 <input type="number" value={m.port} onChange={e => setM({...m, port: Number(e.target.value) || 22})}
