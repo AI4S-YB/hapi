@@ -46,7 +46,7 @@ export function checkNewIssues(): Array<{ iid: string; title: string; repo: stri
 
   try {
     const glab = spawnSync('glab', [
-      'api', 'issues?assignee_username=kentnf&state=opened&per_page=20&order_by=updated_at'
+      'api', `issues?assignee_username=${process.env.USER || 'gitlab-user'}&state=opened&per_page=20&order_by=updated_at`
     ], { timeout: 10000 })
     if (!glab.stdout) return []
 

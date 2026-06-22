@@ -56,14 +56,14 @@ export function ComputeDialog(props: Props) {
           <div className="space-y-2.5 px-4 py-3">
             <Field label="名称">
               <input value={m.name} onChange={e => setM({...m, name: e.target.value})}
-                placeholder="dev-server"
+                placeholder="my-server"
                 className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-sm text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]" />
             </Field>
 
             <div className="flex gap-2">
               <div className="flex-1"><Field label="主机地址">
                 <input value={m.host} onChange={e => setM({...m, host: e.target.value})}
-                  placeholder="47.95.117.10"
+                  placeholder="192.168.1.100"
                   className="w-full rounded border border-[var(--app-divider)] bg-[var(--app-bg)] px-2 py-1.5 text-sm text-[var(--app-fg)] outline-none placeholder:text-[var(--app-hint)] focus:border-[var(--app-link)]" />
                 <div className="mt-0.5 text-[10px] text-[var(--app-hint)]">IP 地址</div>
               </Field></div>

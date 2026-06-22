@@ -5,3 +5,4 @@ node_modules/
 /tmp/
 cli/tools/archives/
 hapi-source/cli/tools/archives/
+hapi-source/dev-test.sh

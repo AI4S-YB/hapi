@@ -51,7 +51,7 @@ export function ResourceSettings() {
           setObsidianPath(detectData.obsidian.vaults[0].path)
         }
         if (detectData.gitlab?.found) {
-          if (!hasUrl) setGitUrl(detectData.gitlab.url || 'http://182.92.166.143:8929')
+          if (!hasUrl) setGitUrl(detectData.gitlab.url || '')
           if (!hasToken && detectData.gitlab.token) setGitToken(detectData.gitlab.token)
         }
       })
