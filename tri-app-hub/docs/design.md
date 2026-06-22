@@ -13,7 +13,7 @@
     │
     ├── HAPI (127.0.0.1:3006)   ← Caddy 反向代理注入导航
     ├── Obsidian Web (127.0.0.1:8686) ← Node.js 服务，渲染 Vault Markdown
-    └── GitLab (182.92.166.143:8929)  ← README 链接 + 书签栏
+    └── GitLab (your-gitlab.example.com:8929)  ← README 链接 + 书签栏
 ```
 
 ## 组件
@@ -35,8 +35,8 @@
 
 | 从 \ 到 | HAPI | Obsidian Web | GitLab |
 |------|:--:|:--:|:--:|
-| HAPI | — | http://127.0.0.1:8686 | http://182.92.166.143:8929 |
-| Obsidian Web | http://127.0.0.1:3006 | — | http://182.92.166.143:8929 |
+| HAPI | — | http://127.0.0.1:8686 | http://your-gitlab.example.com:8929 |
+| Obsidian Web | http://127.0.0.1:3006 | — | http://your-gitlab.example.com:8929 |
 | GitLab | README 链接 | README 链接 | — |
 
 ## 不做什么
