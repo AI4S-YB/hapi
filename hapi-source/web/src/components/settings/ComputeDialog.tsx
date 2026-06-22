@@ -13,7 +13,7 @@ export interface MachineConfig {
 
 interface Props {
   machine: MachineConfig | null
-  dataStats?: { indexedFiles?: number; servers?: Array<{ name: string; files: number }> } | null
+  dataStats?: { indexedFiles?: number; servers?: Array<{ name: string; files: number; scanRoots?: string[] }> } | null
   onSave: (m: MachineConfig) => void
   onDelete?: () => void
   onClose: () => void
@@ -107,7 +107,7 @@ export function ComputeDialog(props: Props) {
             数据资源
           </div>
           <div className="space-y-2.5 px-4 py-3">
-            {/* fan-files stats — from actual fan-files status */}
+            {/* fan-files stats */}
             {ffServer ? (
               <div className="rounded-md bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
                 <div className="flex items-center gap-2 text-xs">
@@ -115,13 +115,20 @@ export function ComputeDialog(props: Props) {
                   <span className="text-emerald-500 font-medium">fan-files</span>
                   <span className="text-[var(--app-fg)]">{ffServer.files.toLocaleString()} 文件已索引</span>
                 </div>
-                <div className="mt-1 text-[10px] text-[var(--app-hint)]">
-                  扫描路径由 fan-files 管理 (fan-files servers add/remove)
-                </div>
+                {ffServer.scanRoots && ffServer.scanRoots.length > 0 && (
+                  <div className="mt-1.5 space-y-0.5">
+                    {ffServer.scanRoots.map((r, i) => (
+                      <div key={i} className="flex items-center gap-1 text-[10px]">
+                        <span className="text-[var(--app-hint)]">📁</span>
+                        <span className="text-[var(--app-fg)]">{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-xs text-[var(--app-hint)]">
-                此机器未在 fan-files 中配置。使用 <code className="rounded bg-[var(--app-subtle-bg)] px-1 text-[10px]">fan-files servers add</code> 添加。
+                未配置 fan-files。使用 <code className="rounded bg-[var(--app-subtle-bg)] px-1 text-[10px]">fan-files servers add</code>。
               </div>
             )}
           </div>

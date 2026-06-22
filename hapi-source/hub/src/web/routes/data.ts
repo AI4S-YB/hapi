@@ -1,9 +1,14 @@
 import { Hono } from 'hono'
 import { spawnSync } from 'child_process'
+import { readFileSync } from 'node:fs'
 
 // Find fan-files binary
 function findFanFiles(): string | null {
-  const candidates = ['/usr/local/bin/fan-files', (process.env.HOME || '/tmp') + '/.cargo/bin/fan-files']
+  const candidates = [
+    '/usr/local/bin/fan-files',
+    (process.env.HOME || '/tmp') + '/Desktop/projects/fan-files/target/release/fan-files',
+    (process.env.HOME || '/tmp') + '/.cargo/bin/fan-files'
+  ]
   for (const c of candidates) {
     const r = spawnSync(c, ['--version'], { timeout: 3000 })
     if (r.status === 0) return c
@@ -34,12 +39,36 @@ export function createDataRoutes(): Hono {
       const lastChange = raw.match(/Last change:\s+(.+)/)
 
       // Parse server lines: "  dev-server     636853 files  (last scan: ...)"
-      const servers: Array<{ name: string; files: number; lastScan: string }> = []
+      const servers: Array<{ name: string; files: number; lastScan: string; scanRoots: string[] }> = []
       const serverRe = /^\s{2}(\S+)\s+(\d+)\s+files\s+\(last scan:\s+(.+)\)/gm
       let m
       while ((m = serverRe.exec(raw)) !== null) {
-        servers.push({ name: m[1], files: parseInt(m[2]), lastScan: m[3].trim() })
+        servers.push({ name: m[1], files: parseInt(m[2]), lastScan: m[3].trim(), scanRoots: [] })
       }
+
+      // Read scan paths from fan-files config
+      try {
+        const configPath = `${process.env.HOME}/.fan-files/config.toml`
+        const toml = readFileSync(configPath, 'utf8')
+        // Extract each [servers.NAME] section's scan_roots array
+        const sections = toml.split(/\[servers\./)
+        for (const sec of sections) {
+          const nameMatch = sec.match(/^(\S+)\]/)
+          if (!nameMatch) continue
+          const name = nameMatch[1]
+          // Find scan_roots = ["...", "..."] in this section
+          const rootsMatch = sec.match(/scan_roots\s*=\s*\[([^\]]+)\]/)
+          const roots: string[] = []
+          if (rootsMatch) {
+            const inner = rootsMatch[1]
+            const pathRe = /"([^"]+)"/g
+            let pm
+            while ((pm = pathRe.exec(inner)) !== null) roots.push(pm[1])
+          }
+          const svr = servers.find(s => s.name === name)
+          if (svr) svr.scanRoots = roots
+        }
+      } catch { /* config not readable */ }
 
       return c.json({
         installed: true,
